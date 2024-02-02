@@ -22,6 +22,7 @@ def init_logger(
         tg_format: str = '%(message)s',
         tg_token: str = None,
         tg_chat_id: str = None
+
 ) -> logging.Logger:
     class ArgsFormatter(logging.Formatter):
         def __init__(self, *args, sep=' ', **kwargs):
@@ -49,7 +50,7 @@ def init_logger(
 
     logging.basicConfig(level=console_level, format=console_format, datefmt=datefmt)
     logger = logging.getLogger(logger_name)
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
     logger.propagate = False
 
     console_handler = logging.StreamHandler()

@@ -1,3 +1,4 @@
+import os
 from contextlib import suppress
 from pathlib import Path
 from threading import Thread
@@ -12,8 +13,11 @@ from tools.process import kill_process_list
 
 class Odines(App):
     def __init__(self, timeout=60):
+        path_ = r"C:\Program Files\1cv8\common\1cestart.exe"
+        if os.path.isfile(r'C:\Program Files\1cv8\8.3.13.1644\bin\1cv8.exe'):
+            path_ = r'C:\Program Files\1cv8\8.3.13.1644\bin\1cv8.exe'
         super(Odines, self).__init__(
-            Path(r"C:\Program Files\1cv8\common\1cestart.exe"), timeout=timeout
+            Path(path_), timeout = timeout
         )
         self.fuckn_tooltip = {
             "class_name": "V8ConfirmationWindow",
@@ -146,7 +150,7 @@ class Odines(App):
             self.find_element(button_, timeout=1).click(double=True)
             self.wait_element(message_, timeout=5, until=False)
 
-        self.parent_switch(self.root_selector, timeout=180)
+        self.parent_switch(self.root_selector, timeout=180, maximize=True)
         self._stack = {0: self.parent}
         self._current_index = 0
         self.root_window = self.find_element(self.root_selector, timeout=1)

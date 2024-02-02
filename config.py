@@ -54,10 +54,10 @@ sed_username = global_env_data['sed_username']
 sed_password = global_env_data['sed_password']
 
 # ? PROJECT
-project_name = 'REPLACE ME'  # ! FIXME
+project_name = 'robot-posting-payments'  # ! FIXME
 chat_id = ''  # ! FIXME
 
-project_path = global_path.joinpath(f'.agent').joinpath(project_name).joinpath(get_hostname())
+project_path = global_path.joinpath(f'.agent').joinpath(project_name) # .joinpath(get_hostname())
 project_path.mkdir(exist_ok=True, parents=True)
 config_path = project_path.joinpath('config.json')
 if not config_path.is_file():
@@ -70,6 +70,9 @@ share_path = config_data['share_path']
 log_path = project_path.joinpath(f'{sys.argv[1]}.log' if len(sys.argv) > 1 else 'dev.log')
 logger = init_logger(file_path=log_path, tg_token=tg_token, tg_chat_id=chat_id)
 
+production_calendar_path = config_data['production_calendar_path']
+form_document_path = config_data['form_document_path']
+
 # ? EXAMPLES
 # * root_path == C:\Users\user\PycharmProjects\pythonProject
 # * local_path == C:\Users\user\AppData\Local\.rpa
@@ -81,3 +84,11 @@ logger.info('local_path', local_path)
 logger.info('global_path', global_path)
 logger.info('project_path', project_path)
 logger.info('share_path', share_path)
+
+engine_kwargs = {
+    'username': global_env_data['postgre_db_username'],
+    'password': global_env_data['postgre_db_password'],
+    'host': global_env_data['postgre_ip'],
+    'port': global_env_data['postgre_port'],
+    'base': 'orchestrator'
+}
