@@ -1,3 +1,4 @@
+import socket
 import sys
 from pathlib import Path
 
@@ -57,7 +58,7 @@ sed_password = global_env_data['sed_password']
 project_name = 'robot-posting-payments'  # ! FIXME
 chat_id = ''  # ! FIXME
 
-project_path = global_path.joinpath(f'.agent').joinpath(project_name) # .joinpath(get_hostname())
+project_path = global_path.joinpath(f'.agent').joinpath(project_name).joinpath(get_hostname())
 project_path.mkdir(exist_ok=True, parents=True)
 config_path = project_path.joinpath('config.json')
 if not config_path.is_file():
@@ -72,6 +73,9 @@ logger = init_logger(file_path=log_path, tg_token=tg_token, tg_chat_id=chat_id)
 
 production_calendar_path = config_data['production_calendar_path']
 form_document_path = config_data['form_document_path']
+
+ip_address = socket.gethostbyname(socket.gethostname())
+main_executor = '172.20.1.24'  # '10.70.2.11'
 
 # ? EXAMPLES
 # * root_path == C:\Users\user\PycharmProjects\pythonProject

@@ -1,9 +1,12 @@
 import datetime
 from time import sleep
+from typing import Union
 
 from openpyxl import load_workbook
+from sqlalchemy.sql.functions import random
+from sqlalchemy.sql.operators import or_
 
-from config import logger, engine_kwargs, project_name, smtp_host, smtp_author
+from config import logger, engine_kwargs, project_name, smtp_host, smtp_author, ip_address
 from tools.smtp import smtp_send
 
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, MetaData, Table, Date, Boolean, select, Float
@@ -13,11 +16,14 @@ Base = declarative_base()
 
 
 class Table_(Base):
-    __tablename__ = project_name.replace('-', '_')
+    __tablename__ = f'robot_posting_payments_{ip_address}'  # project_name.replace('-', '_')
 
     date_created = Column(DateTime, default=None)
+    date_started = Column(DateTime, default=None)
     date_edited = Column(DateTime, default=None)
     status = Column(String(16), default=None)
+    error_reason = Column(String(512), default=None)
+    executor_name = Column(String(512), default=None)
     payment_date = Column(DateTime, default=None)
     payment_id = Column(String(512), primary_key=True, default=None)
     payment_sum = Column(Float, default=None)
@@ -42,6 +48,7 @@ def add_to_db(session: Session, status_: str, payment_date_: datetime, payment_i
         date_created=datetime.datetime.now(),
         date_edited=None,
         status=status_,
+        executor_name=ip_address if status_ != 'new' else None,
         payment_date=payment_date_,
         payment_id=payment_id_,
         payment_sum=payment_sum_,
@@ -65,14 +72,18 @@ def get_all_data(session: Session):
     return rows
 
 
-def get_all_data_by_status(session: Session, status: str = 'new' or 'processing' or 'failed' or 'success'):
-    rows = [row for row in session.query(Table_).filter(Table_.status == status).all()]
+def get_all_data_by_status(session: Session, status: Union[list, str]):
+
+    if isinstance(status, list):
+        rows = [row for row in session.query(Table_).filter(Table_.status.in_(status)).filter(or_(Table_.executor_name == ip_address, Table_.executor_name == None)).order_by(random()).all()]
+    else:
+        rows = [row for row in session.query(Table_).filter(Table_.status == status).filter(or_(Table_.executor_name == ip_address, Table_.executor_name == None)).order_by(random()).all()]
 
     return rows
 
 
 def update_in_db(session: Session, row: Table_, status_: str, branch_: str or None, invoice_id_: str or None,
-                 invoice_payment_to_contragent_: bool or None, tmz_realization_: bool or None, invoice_factura_: bool or None, subconto_: bool or None = None):
+                 invoice_payment_to_contragent_: bool or None, tmz_realization_: bool or None, invoice_factura_: bool or None, subconto_: bool or None = None, error_reason_: str = None):
     row.status = status_
     row.date_edited = datetime.datetime.now()
     row.branch = branch_
@@ -86,5 +97,7 @@ def update_in_db(session: Session, row: Table_, status_: str, branch_: str or No
         row.invoice_factura = invoice_factura_
     if subconto_ is not None:
         row.subconto = subconto_
+    if error_reason_ is not None:
+        row.error_reason = error_reason_
 
     session.commit()
