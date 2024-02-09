@@ -823,7 +823,7 @@ def performer(processing_date, processing_date_short):
                         logger.warning(f'Checkpoint7 | {datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")}')
 
                         app.filter({'Контрагент': ('Равно', row.contragent)})
-
+                        # 1
                         # app.find_element({"title": "", "class_name": "", "control_type": "Edit",
                         #                   "visible_only": True, "enabled_only": True, "found_index": 19}).click()
                         # app.find_element({"title": "", "class_name": "", "control_type": "Edit",
