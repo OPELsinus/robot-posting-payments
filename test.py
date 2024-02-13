@@ -1,22 +1,22 @@
 import datetime
 from typing import Union
 
-# import random
-# from contextlib import suppress
-# from pathlib import Path
-# from time import sleep
-#
-# from openpyxl.reader.excel import load_workbook
-# from sqlalchemy import create_engine
-# from sqlalchemy.orm import sessionmaker
-#
-# from config import engine_kwargs
-# from models import Base, add_to_db, get_all_data, update_in_db, get_all_data_by_status
-# from tools.app import App
-# import pyautogui as pag
-#
-# import pandas as pd
-#
+import random
+from contextlib import suppress
+from pathlib import Path
+from time import sleep
+
+from openpyxl.reader.excel import load_workbook
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+from config import engine_kwargs
+from models import Base, add_to_db, get_all_data, update_in_db, get_all_data_by_status
+from tools.app import App
+import pyautogui as pag
+
+import pandas as pd
+
 # from tools.xlsx_fix import fix_excel_file_error
 
 # fix_excel_file_error(Path(r'C:\Users\Abdykarim.D\Documents\lolus.xlsx'))
@@ -134,14 +134,29 @@ from typing import Union
 #     df = pd.read_excel(r'C:\Users\Abdykarim.D\Documents\кимберли.xlsx')
 
 
-b = datetime.datetime(2024, 1, 3, 11, 21, 0)
-a = datetime.datetime(2023, 12, 31, 17, 21, 0)
+# b = datetime.datetime(2024, 1, 3, 11, 21, 0)
+# a = datetime.datetime(2023, 12, 31, 17, 21, 0)
+#
+# one = a.strftime("%d.%m.%Y %H:%M:%S").split('.')[0]
+# two = b.strftime("%d.%m.%Y %H:%M:%S").split('.')[0]
+# # two = datetime.datetime.now().strftime("%d.%m.%Y").split('.')[0]
+#
+# print((b - a).total_seconds() / 86400)
+#
+# print(int(two) - int(one))
 
-one = a.strftime("%d.%m.%Y %H:%M:%S").split('.')[0]
-two = b.strftime("%d.%m.%Y %H:%M:%S").split('.')[0]
-# two = datetime.datetime.now().strftime("%d.%m.%Y").split('.')[0]
+for day in range(13, 14):
 
-print((b - a).total_seconds() / 86400)
+    processing_date_ = datetime.date.today().strftime('%d.%m.%Y')
+    processing_date_short_ = datetime.date.today().strftime('%d.%m.%y')
 
-print(int(two) - int(one))
+    if day < 10:
+        processing_date_ = f'0{day}.02.2024'
+        processing_date_short_ = f'0{day}.02.24'
+    else:
+        processing_date_ = f'{day}.02.2024'
+        processing_date_short_ = f'{day}.02.24'
 
+    half_year_back_date = (datetime.date(int(processing_date_.split('.')[2]), int(processing_date_.split('.')[1]), int(processing_date_.split('.')[0])) - datetime.timedelta(days=180)).strftime('%d.%m.%Y')
+
+    print(processing_date_, half_year_back_date)

@@ -16,7 +16,7 @@ Base = declarative_base()
 
 
 class Table_(Base):
-    __tablename__ = f'robot_posting_payments_{ip_address}'  # project_name.replace('-', '_')
+    __tablename__ = f'robot_posting_payments_{ip_address}'  # f'robot_posting_payments_{ip_address}'  # project_name.replace('-', '_')
 
     date_created = Column(DateTime, default=None)
     date_started = Column(DateTime, default=None)
@@ -46,6 +46,7 @@ def add_to_db(session: Session, status_: str, payment_date_: datetime, payment_i
               invoice_factura_: bool or None, subconto_: bool or None):
     session.add(Table_(
         date_created=datetime.datetime.now(),
+        date_started=None,
         date_edited=None,
         status=status_,
         executor_name=ip_address if status_ != 'new' else None,
@@ -84,9 +85,13 @@ def get_all_data_by_status(session: Session, status: Union[list, str]):
 
 def update_in_db(session: Session, row: Table_, status_: str, branch_: str or None, invoice_id_: str or None,
                  invoice_payment_to_contragent_: bool or None, tmz_realization_: bool or None, invoice_factura_: bool or None, subconto_: bool or None = None, error_reason_: str = None):
+
     row.status = status_
     row.date_edited = datetime.datetime.now()
     row.branch = branch_
+    row.date_started = datetime.datetime.now() if row.date_started is None else row.date_started
+    row.executor_name = ip_address
+
     if invoice_id_ is not None:
         row.invoice_id = invoice_id_
     if invoice_payment_to_contragent_ is not None:
