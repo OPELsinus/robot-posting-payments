@@ -1330,7 +1330,7 @@ def performer(processing_date, processing_date_short, half_year_back_date):
                             # app.find_element({"title": "", "class_name": "", "control_type": "ListItem",
                             #                   "visible_only": True, "enabled_only": True, "found_index": 0}).click()
 
-                    sleep(1)
+                    sleep(1) #
                     if bill_calculations is not None:
                         app.find_element({"title": "", "class_name": "", "control_type": "Edit",
                                           "visible_only": True, "enabled_only": True, "found_index": 16, "parent": app.root}).click()
