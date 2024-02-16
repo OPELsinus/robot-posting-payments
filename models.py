@@ -16,12 +16,12 @@ Base = declarative_base()
 
 
 class Table_(Base):
-    __tablename__ = f'robot_posting_payments_{ip_address}'  # f'robot_posting_payments_{ip_address}'  # project_name.replace('-', '_')
+    __tablename__ = f'robot_posting_payments_10.70.2.51'  # f'robot_posting_payments_{ip_address}'  # project_name.replace('-', '_')
 
     date_created = Column(DateTime, default=None)
     date_started = Column(DateTime, default=None)
     date_edited = Column(DateTime, default=None)
-    status = Column(String(16), default=None)
+    status = Column(String(32), default=None)
     error_reason = Column(String(512), default=None)
     executor_name = Column(String(512), default=None)
     payment_date = Column(DateTime, default=None)
@@ -29,7 +29,7 @@ class Table_(Base):
     payment_sum = Column(Float, default=None)
     contragent = Column(String(512), default=None)
     branch = Column(String(512), default=None)
-    invoice_id = Column(Boolean, default=None)
+    invoice_id = Column(String(512), default=None)
     invoice_payment_to_contragent = Column(Boolean, default=None)
     tmz_realization = Column(Boolean, default=None)
     invoice_factura = Column(Boolean, default=None)
@@ -44,25 +44,27 @@ class Table_(Base):
 def add_to_db(session: Session, status_: str, payment_date_: datetime, payment_id_: str, payment_sum_: float, contragent_: str,
               branch_: str or None, invoice_id_: str or None, invoice_payment_to_contragent_: bool or None, tmz_realization_: bool or None,
               invoice_factura_: bool or None, subconto_: bool or None):
-    session.add(Table_(
-        date_created=datetime.datetime.now(),
-        date_started=None,
-        date_edited=None,
-        status=status_,
-        executor_name=ip_address if status_ != 'new' else None,
-        payment_date=payment_date_,
-        payment_id=payment_id_,
-        payment_sum=payment_sum_,
-        contragent=contragent_,
-        branch=branch_ if isinstance(branch_, str) else None,
-        invoice_id=invoice_id_,
-        invoice_payment_to_contragent=invoice_payment_to_contragent_,
-        tmz_realization=tmz_realization_,
-        invoice_factura=invoice_factura_,
-        subconto=subconto_
-    ))
 
-    session.commit()
+    if session.query(Table_).filter(payment_id_ == Table_.payment_id).scalar() is None:
+        session.add(Table_(
+            date_created=datetime.datetime.now(),
+            date_started=None,
+            date_edited=None,
+            status=status_,
+            executor_name=ip_address if status_ != 'new' else None,
+            payment_date=payment_date_,
+            payment_id=payment_id_,
+            payment_sum=payment_sum_,
+            contragent=contragent_,
+            branch=branch_ if isinstance(branch_, str) else None,
+            invoice_id=invoice_id_,
+            invoice_payment_to_contragent=invoice_payment_to_contragent_,
+            tmz_realization=tmz_realization_,
+            invoice_factura=invoice_factura_,
+            subconto=subconto_
+        ))
+
+        session.commit()
 
 
 def get_all_data(session: Session):
@@ -76,9 +78,14 @@ def get_all_data(session: Session):
 def get_all_data_by_status(session: Session, status: Union[list, str]):
 
     if isinstance(status, list):
-        rows = [row for row in session.query(Table_).filter(Table_.status.in_(status)).filter(or_(Table_.executor_name == ip_address, Table_.executor_name == None)).order_by(random()).all()]
+        rows = [row for row in session.query(Table_).filter(Table_.status.in_(status))
+        .filter(or_(Table_.executor_name == ip_address, Table_.executor_name == None)).order_by(random()).all()]
+
+        # for i in [row for row in session.query(Table_).filter(Table_.executor_name == None).all()]:
+        #     print(type(i.executor_name))
     else:
-        rows = [row for row in session.query(Table_).filter(Table_.status == status).filter(or_(Table_.executor_name == ip_address, Table_.executor_name == None)).order_by(random()).all()]
+        rows = [row for row in session.query(Table_).filter(status == Table_.status)
+        .filter(or_(Table_.executor_name == ip_address, Table_.executor_name == None)).order_by(random()).all()]
 
     return rows
 
@@ -88,7 +95,7 @@ def update_in_db(session: Session, row: Table_, status_: str, branch_: str or No
 
     row.status = status_
     row.date_edited = datetime.datetime.now()
-    row.branch = branch_
+    row.branch = branch_ if branch_ is not None else row.branch
     row.date_started = datetime.datetime.now() if row.date_started is None else row.date_started
     row.executor_name = ip_address
 

@@ -1,4 +1,5 @@
 from pathlib import Path
+from time import sleep
 from typing import Union
 
 
@@ -21,6 +22,7 @@ def fix_excel_file_error(path: Union[Path, str]) -> Union[Path, None]:
         shutil.make_archive(file_path.__str__(), 'zip', tmp_folder)
         os.rename(file_path.__str__() + '.zip', file_path.__str__())
         shutil.rmtree(tmp_folder.__str__(), ignore_errors=True)
+        sleep(2)
     except (Exception,):
         traceback.print_exc()
         return None

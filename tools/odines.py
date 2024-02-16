@@ -585,6 +585,12 @@ class Odines(App):
                 controls[key]["inputs"][n]["element"].type_keys(
                     value, self.keys.TAB, click=True, clear=True, protect_first=True
                 )
+                if self.wait_element({"class_name": "", "control_type": "ListItem",
+                                     "visible_only": True, "enabled_only": True}, timeout=1):
+                    els = self.find_elements({"class_name": "", "control_type": "ListItem", "visible_only": True, "enabled_only": True}, timeout=10)
+                    for el in els:
+                        el.click()
+                        break
 
         self.find_element(
             {

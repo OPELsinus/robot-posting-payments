@@ -2,20 +2,20 @@ import datetime
 from typing import Union
 
 import random
-from contextlib import suppress
-from pathlib import Path
-from time import sleep
-
-from openpyxl.reader.excel import load_workbook
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-
-from config import engine_kwargs
-from models import Base, add_to_db, get_all_data, update_in_db, get_all_data_by_status
-from tools.app import App
-import pyautogui as pag
-
-import pandas as pd
+# from contextlib import suppress
+# from pathlib import Path
+# from time import sleep
+#
+# from openpyxl.reader.excel import load_workbook
+# from sqlalchemy import create_engine
+# from sqlalchemy.orm import sessionmaker
+#
+# from config import engine_kwargs
+# from models import Base, add_to_db, get_all_data, update_in_db, get_all_data_by_status
+# from tools.app import App
+# import pyautogui as pag
+#
+# import pandas as pd
 
 # from tools.xlsx_fix import fix_excel_file_error
 
@@ -145,18 +145,17 @@ import pandas as pd
 #
 # print(int(two) - int(one))
 
-for day in range(13, 14):
+start = 10000
+apr = 15
+days = 365
+last = start
 
-    processing_date_ = datetime.date.today().strftime('%d.%m.%Y')
-    processing_date_short_ = datetime.date.today().strftime('%d.%m.%y')
+for year in range(1):
 
-    if day < 10:
-        processing_date_ = f'0{day}.02.2024'
-        processing_date_short_ = f'0{day}.02.24'
-    else:
-        processing_date_ = f'{day}.02.2024'
-        processing_date_short_ = f'{day}.02.24'
+    for i in range(days):
+        print(start, ' | ', (start * apr / 365.0) / 100)
+        start += (start * apr / 365.0) / 100
 
-    half_year_back_date = (datetime.date(int(processing_date_.split('.')[2]), int(processing_date_.split('.')[1]), int(processing_date_.split('.')[0])) - datetime.timedelta(days=180)).strftime('%d.%m.%Y')
+    print(start, start * 100 / last)
 
-    print(processing_date_, half_year_back_date)
+    last = start
