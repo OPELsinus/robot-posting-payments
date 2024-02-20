@@ -1,7 +1,7 @@
-import datetime
-from typing import Union
-
-import random
+# import datetime
+# from typing import Union
+#
+# import random
 # from contextlib import suppress
 # from pathlib import Path
 # from time import sleep
@@ -16,6 +16,8 @@ import random
 # import pyautogui as pag
 #
 # import pandas as pd
+import datetime
+import os
 
 # from tools.xlsx_fix import fix_excel_file_error
 
@@ -104,8 +106,6 @@ import random
 
 
 
-
-
 # --------------------------------------------------------------------------------------------------------------------------------
 # contragent = 'ПРОКТЕР ЭНД ГЭМБЛ КАЗАХСТАН ДИСТРИБЬЮШН ТОО (13623)'
 # cur_date = '16.03.2023'
@@ -134,8 +134,8 @@ import random
 #     df = pd.read_excel(r'C:\Users\Abdykarim.D\Documents\кимберли.xlsx')
 
 
-# b = datetime.datetime(2024, 1, 3, 11, 21, 0)
-# a = datetime.datetime(2023, 12, 31, 17, 21, 0)
+# b = datetime.datetime(2024, 2, 19, 15, 21, 0)
+# a = datetime.datetime(2024, 2, 16, 11, 21, 0)
 #
 # one = a.strftime("%d.%m.%Y %H:%M:%S").split('.')[0]
 # two = b.strftime("%d.%m.%Y %H:%M:%S").split('.')[0]
@@ -144,18 +144,29 @@ import random
 # print((b - a).total_seconds() / 86400)
 #
 # print(int(two) - int(one))
+#
+# print((b - a))
 
-start = 10000
-apr = 15
-days = 365
-last = start
 
-for year in range(1):
+import pandas as pd
+c = 0
+for file in os.listdir(r'C:\Users\Abdykarim.D\Documents\BI'):
+    if 'xls' not in file:
+        continue
+    df = pd.read_excel(os.path.join(r'C:\Users\Abdykarim.D\Documents\BI', file))
 
-    for i in range(days):
-        print(start, ' | ', (start * apr / 365.0) / 100)
-        start += (start * apr / 365.0) / 100
+    df_notna = df[(df['ФИО'].str.len() > 1) & (df['ФИО'].notna())]
+    df_notna['Окончание смены'] = df_notna['Окончание смены'].apply(lambda x: datetime.datetime.strptime(x, '%d.%m.%Y %H:%M:%S').strftime('%d.%m.%Y'))
+    print(len(df_notna))
 
-    print(start, start * 100 / last)
+    for dates in df_notna['Окончание смены'].unique():
+        print(len(df_notna[df_notna['Окончание смены'] == dates]))
+        c += len(df_notna[df_notna['Окончание смены'] == dates])
+        if os.path.isfile(fr'C:\Users\Abdykarim.D\Documents\BI\A\outsourcingshifts {str(dates.split()[0]).replace(".", "_")}.xlsx'):
+            df1 = pd.read_excel(fr'C:\Users\Abdykarim.D\Documents\BI\A\outsourcingshifts {str(dates.split()[0]).replace(".", "_")}.xlsx')
+            df_notna = pd.concat([df1, df_notna])
+            df_notna[df_notna['Окончание смены'] == dates].to_excel(fr'C:\Users\Abdykarim.D\Documents\BI\A\outsourcingshifts {str(dates.split()[0]).replace(".", "_")}.xlsx', index=False)
 
-    last = start
+        else:
+            df_notna[df_notna['Окончание смены'] == dates].to_excel(fr'C:\Users\Abdykarim.D\Documents\BI\A\outsourcingshifts {str(dates.split()[0]).replace(".", "_")}.xlsx', index=False)
+print(c)
