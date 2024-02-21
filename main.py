@@ -6,6 +6,7 @@ from contextlib import suppress
 from pathlib import Path
 from time import sleep
 
+import psycopg2
 import pyautogui as pag
 from pywinauto import keyboard
 from sqlalchemy import create_engine
@@ -119,7 +120,7 @@ def performer(processing_date, processing_date_short, half_year_back_date):
     second_excel_path = os.path.join(download_path, f'chpokus_{ip_address.replace(".", "_")}.xlsx')
     subconto_path = os.path.join(download_path, f'subconto_{ip_address.replace(".", "_")}.xlsx')
 
-    procter_path = r'\\172.16.8.87\d\.rpa\.agent\robot-posting-payments\Temp\проктер.xlsx'
+    procter_path = r'\\vault.magnum.local\common\Stuff\_06_Бухгалтерия\Выписки\Для Робота\Для Проктер\PaymentReportDetails (13).xlsx'
     kimberly_path = r'\\vault.magnum.local\common\Stuff\_06_Бухгалтерия\Выписки\Для Робота\Для Кимберли-Кларк'
 
     temp_path = os.path.join(download_path, f'temp_file_{ip_address.replace(".", "_")}.xlsx')  # os.path.join(working_path)
@@ -374,13 +375,22 @@ def performer(processing_date, processing_date_short, half_year_back_date):
     #             add_to_db(session, 'new', main_df['Дата'].iloc[ind], str(main_df['Номер'].iloc[ind]), main_df['Сумма документа'].iloc[ind], main_df['Контрагент'].iloc[ind],
     #                       None, None, None, None, None, None)
 
-    rows = get_all_data_by_status(session, ['new'])
+    rows = get_all_data_by_status(session, ['new', 'processing'])
     ind = -1
+    rows_ = None
+    break_counter = 0
 
     while len(rows) != 0:
 
-        rows = get_all_data_by_status(session, ['new'])
+        rows = get_all_data_by_status(session, ['new', 'processing'])
 
+        if rows_ == rows:
+            break_counter += 1
+
+        if break_counter >= 4:
+            break
+
+        rows_ = rows
         print(f'Total rows: {len(rows)}')
 
         sleep(1)
@@ -392,10 +402,10 @@ def performer(processing_date, processing_date_short, half_year_back_date):
 
         logger.info(row.contragent)
 
-        print('DDD:', datetime.datetime.now() - row.payment_date)
+        # print('DDD:', datetime.datetime.now() - row.payment_date)
 
-        if 'проктер' in str(row.contragent).lower():  # or 'кимберли' in str(row.contragent).lower():
-            continue
+        # if 'проктер' in str(row.contragent).lower():  # or 'кимберли' in str(row.contragent).lower():
+        #     continue
 
         # if str(row.contragent).strip() != 'Ахметов ИП':
         #     continue
@@ -409,7 +419,7 @@ def performer(processing_date, processing_date_short, half_year_back_date):
 
         # if True:
 
-        if True:
+        try:
 
             logger.warning(f'Started {row.payment_id} | {row.contragent}')
 
@@ -423,9 +433,11 @@ def performer(processing_date, processing_date_short, half_year_back_date):
             app.auth()
 
             if row.contragent not in ['ПРОКТЕР ЭНД ГЭМБЛ КАЗАХСТАН ДИСТРИБЬЮШН ТОО (13623)', 'КИМБЕРЛИ-КЛАРК КАЗАХСТАН ТОО (3199)']:
-                print('dfsfdsf')
+
                 update_in_db(session, row, 'processing', None, None,
                              None, None, None, None)
+
+                if_tovar = False
 
                 if True:
                     app.open('Банк и касса', 'Платежное поручение входящее')
@@ -614,6 +626,12 @@ def performer(processing_date, processing_date_short, half_year_back_date):
 
                             invoice = str(app.find_element({"title": "", "class_name": "", "control_type": "Edit",
                                                             "visible_only": True, "enabled_only": True, "found_index": 3}).element.iface_value.CurrentValue)
+
+                            nomenclatura = str(app.find_element({"title_re": ".* Номенклатура", "class_name": "", "control_type": "Custom",
+                                                             "visible_only": True, "enabled_only": True, "found_index": 0}).element.element_info.name)
+
+                            if 'товар' in nomenclatura.lower():
+                                if_tovar = True
 
                             app.find_element({"title": "Закрыть", "class_name": "", "control_type": "Button",
                                               "visible_only": True, "enabled_only": True, "found_index": 3}).click()
@@ -817,6 +835,12 @@ def performer(processing_date, processing_date_short, half_year_back_date):
 
                             invoice = str(app.find_element({"title": "", "class_name": "", "control_type": "Edit",
                                                             "visible_only": True, "enabled_only": True, "found_index": 3}).element.iface_value.CurrentValue)
+
+                            nomenclatura = str(app.find_element({"title_re": ".* Номенклатура", "class_name": "", "control_type": "Custom",
+                                                                 "visible_only": True, "enabled_only": True, "found_index": 0}).element.element_info.name)
+
+                            if 'товар' in nomenclatura.lower():
+                                if_tovar = True
                             print(f"FOUND INVOICE: {invoice}")
                             app.find_element({"title": "Закрыть", "class_name": "", "control_type": "Button",
                                               "visible_only": True, "enabled_only": True, "found_index": 3}).click()
@@ -1026,6 +1050,12 @@ def performer(processing_date, processing_date_short, half_year_back_date):
 
                             invoice = str(app.find_element({"title": "", "class_name": "", "control_type": "Edit",
                                                             "visible_only": True, "enabled_only": True, "found_index": 3}).element.iface_value.CurrentValue)
+
+                            nomenclatura = str(app.find_element({"title_re": ".* Номенклатура", "class_name": "", "control_type": "Custom",
+                                                                 "visible_only": True, "enabled_only": True, "found_index": 0}).element.element_info.name)
+
+                            if 'товар' in nomenclatura.lower():
+                                if_tovar = True
 
                             app.find_element({"title": "Закрыть", "class_name": "", "control_type": "Button",
                                               "visible_only": True, "enabled_only": True, "found_index": 3}).click()
@@ -1241,11 +1271,55 @@ def performer(processing_date, processing_date_short, half_year_back_date):
 
                         if len(all_contracts) > 1:
 
-                            for i in all_contracts.index:
-                                print(main_df['Subconto'].iloc[i - 2], main_df['Debit.2'].iloc[i - 2])
-                                if float(summ) == float(main_df['Debit.2'].iloc[i - 2]):
-                                    branch = main_df['Subconto'].iloc[i - 2]
-                                    contract = main_df['Subconto'].iloc[i - 1]
+                            conn = psycopg2.connect(dbname='adb', host='172.16.10.22', port='5432',
+                                                    user='rpa_robot', password='Qaz123123+')
+
+                            cur = conn.cursor()
+
+                            cur.execute(f"""select distinct(name_sale_object_for_print) from dwh_data.dim_branches_src dbs""")
+                            df = pd.DataFrame(cur.fetchall())
+                            conn.close()
+
+                            all_branches = []
+
+                            for branchos in df[df.columns[0]]:
+                                all_branches.append(branchos.replace(' ', '').lower())
+
+                            all_branches.append('ТОО "Magnum Cash&Carry"'.replace(' ', '').lower())
+                            row_ = main_df[main_df['Debit.2'] == summ]
+                            print(row_)
+                            print()
+                            if len(row_) != 0:
+
+                                if isinstance(row_['Subconto'].iloc[0], int):
+                                    for ind_ in range(row_.index[0], -1, -1):
+                                        print(main_df['Subconto'].iloc[ind_])
+                                        if (contract is None and isinstance(main_df['Subconto'].iloc[ind_], str)
+                                            and main_df['Subconto'].iloc[ind_] != contragent) \
+                                                and main_df['Subconto'].iloc[ind_].replace(' ', '').lower() not in all_branches:
+                                            contract = main_df['Subconto'].iloc[ind_]
+
+                                        if isinstance(main_df['Subconto'].iloc[ind_], str) and main_df['Subconto'].iloc[ind_].replace(' ', '').lower() in all_branches:
+                                            branch = main_df['Subconto'].iloc[ind_]
+                                            break
+
+                                elif isinstance(row_['Subconto'].iloc[0], str):
+                                    for ind_ in range(row_.index[0] + 1, -1, -1):
+                                        print(main_df['Subconto'].iloc[ind_])
+                                        if (contract is None and isinstance(main_df['Subconto'].iloc[ind_], str)
+                                            and main_df['Subconto'].iloc[ind_] != contragent) \
+                                                and main_df['Subconto'].iloc[ind_].replace(' ', '').lower() not in all_branches:
+                                            contract = main_df['Subconto'].iloc[ind_]
+
+                                        if isinstance(main_df['Subconto'].iloc[ind_], str) and main_df['Subconto'].iloc[ind_].replace(' ', '').lower() in all_branches:
+                                            branch = main_df['Subconto'].iloc[ind_]
+                                            break
+
+                            # for i in all_contracts.index:
+                            #     print(main_df['Subconto'].iloc[i - 2], main_df['Debit.2'].iloc[i - 2])
+                            #     if float(summ) == float(main_df['Debit.2'].iloc[i - 2]):
+                            #         branch = main_df['Subconto'].iloc[i - 2]
+                            #         contract = main_df['Subconto'].iloc[i - 1]
 
                         if branch is not None:
                             update_in_db(session, row, 'processing', branch, contract,
@@ -1260,6 +1334,8 @@ def performer(processing_date, processing_date_short, half_year_back_date):
 
                         logger.warning(f'Checkpoint14 | {datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")}')
 
+                        app.open("Окна", "Закрыть все")
+
                     except Exception as err4:
                         traceback.print_exc()
                         app.open("Окна", "Закрыть все")
@@ -1269,11 +1345,22 @@ def performer(processing_date, processing_date_short, half_year_back_date):
 
                 # FINAL -----------------------------------------------------------------------------------------------------------------------------------------------
 
-                if check_fill_final_step and any([row.invoice_payment_to_contragent, row.tmz_realization, row.invoice_factura, row.subconto]):
+                if check_fill_final_step:  # and any([row.invoice_payment_to_contragent, row.tmz_realization, row.invoice_factura, row.subconto]):
 
                     # for ind, row in enumerate(rows):
 
+                    app.open("Окна", "Закрыть все")
+
                     app.parent_switch(app.root)
+
+                    els = app.find_elements({"title": "Закрыть", "class_name": "", "control_type": "Button",
+                                                    "visible_only": True, "enabled_only": True, "parent": app.root}, timeout=15)
+                    for ids_ in range(len(els)):
+                        try:
+                            app.find_element({"title": "Закрыть", "class_name": "", "control_type": "Button",
+                                                      "visible_only": True, "enabled_only": True, "found_index": 2, "parent": app.root}, timeout=15).click()
+                        except:
+                            break
 
                     # app = Odines()
                     # app.auth()
@@ -1332,7 +1419,7 @@ def performer(processing_date, processing_date_short, half_year_back_date):
                         row.invoice_id = None
 
                     check_for_index = (app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                                                        "visible_only": True, "enabled_only": True, "found_index": 19, "parent": app.root}).element.element_info.element.CurrentHelpText)
+                                                         "visible_only": True, "enabled_only": True, "found_index": 19, "parent": app.root}).element.element_info.element.CurrentHelpText)
 
                     invoice_index = 12 if check_for_index == 'Филиал' else 15
                     branch_index = 19 if check_for_index == 'Филиал' else 22
@@ -1420,6 +1507,26 @@ def performer(processing_date, processing_date_short, half_year_back_date):
 
                     if skip:
                         print('CHECKPOINT FINAL 7')
+
+                        update_in_db(session, row, 'skipped.1', branch, invoice,
+                                     None, None, None, None)
+
+                        app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                          "visible_only": True, "enabled_only": True, "found_index": branch_index, "parent": app.root}).click()
+                        app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                          "visible_only": True, "enabled_only": True, "found_index": branch_index, "parent": app.root}).type_keys(app.keys.RIGHT * 70, app.keys.BACKSPACE * 130)
+
+                        app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                          "visible_only": True, "enabled_only": True, "found_index": invoice_index, "parent": app.root}).click()
+                        app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                          "visible_only": True, "enabled_only": True, "found_index": invoice_index, "parent": app.root}).type_keys(app.keys.RIGHT * 50, app.keys.BACKSPACE * 100)
+
+                        app.find_element({"title": "Записать", "class_name": "", "control_type": "Button",
+                                          "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
+
+                        app.find_element({"title": "Закрыть", "class_name": "", "control_type": "Button",
+                                          "visible_only": True, "enabled_only": True, "found_index": 4}).click()
+
                         update_in_db(session, row, 'skipped', branch, invoice,
                                      None, None, None, None)
                         continue
@@ -1427,23 +1534,35 @@ def performer(processing_date, processing_date_short, half_year_back_date):
                     sleep(1)
 
                     if branch is None or invoice == 'Без договора':
-
                         app.find_element({"title": "", "class_name": "", "control_type": "Edit",
                                           "visible_only": True, "enabled_only": True, "found_index": branch_index, "parent": app.root}).click()
                         app.find_element({"title": "", "class_name": "", "control_type": "Edit",
                                           "visible_only": True, "enabled_only": True, "found_index": branch_index, "parent": app.root}).type_keys(app.keys.RIGHT * 70, app.keys.BACKSPACE * 130)
 
+                        app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                          "visible_only": True, "enabled_only": True, "found_index": invoice_index, "parent": app.root}).click()
+                        app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                          "visible_only": True, "enabled_only": True, "found_index": invoice_index, "parent": app.root}).type_keys(app.keys.RIGHT * 50, app.keys.BACKSPACE * 100)
+
                         app.find_element({"title": "Записать", "class_name": "", "control_type": "Button",
                                           "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
 
+                        app.find_element({"title": "Закрыть", "class_name": "", "control_type": "Button",
+                                          "visible_only": True, "enabled_only": True, "found_index": 4}).click()
+
                         update_in_db(session, row, 'finished del', branch, invoice,
                                      None, None, None, None)
+
+                        app.quit()
 
                         continue
 
                     # if dds_statement is None:
                     #     invoice = None
                     #     branch = row.branch
+
+                    if if_tovar:
+                        invoice = 'Договор реализации'
 
                     sleep(1)
                     app.find_element({"title": "", "class_name": "", "control_type": "Edit",
@@ -1479,7 +1598,7 @@ def performer(processing_date, processing_date_short, half_year_back_date):
                         app.find_element({"title": "", "class_name": "", "control_type": "Edit",
                                           "visible_only": True, "enabled_only": True, "found_index": pnl_index, "parent": app.root}).type_keys(pnl)
                         app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                                      "visible_only": True, "enabled_only": True, "found_index": pnl_index, "parent": app.root}).type_keys(app.keys.ENTER, app.keys.ENTER)
+                                          "visible_only": True, "enabled_only": True, "found_index": pnl_index, "parent": app.root}).type_keys(app.keys.ENTER, app.keys.ENTER)
                         if app.wait_element({"class_name": "", "control_type": "ListItem",
                                              "visible_only": True, "enabled_only": True, "parent": app.root}, timeout=1):
                             els = app.find_elements({"class_name": "", "control_type": "ListItem", "visible_only": True, "enabled_only": True, "parent": app.root}, timeout=10)
@@ -1544,17 +1663,31 @@ def performer(processing_date, processing_date_short, half_year_back_date):
 
                     print()
 
-                    if app.wait_element({"title": "Провести", "class_name": "", "control_type": "Button",
-                                         "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}, timeout=1):
+                    app.find_element({"title": "Провести", "class_name": "", "control_type": "Button",
+                                      "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}, timeout=1).click()
+                    # sleep(1.5)
+                    # if app.wait_element({"title": "Отмена проведения", "class_name": "", "control_type": "Button",
+                    #                      "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}, timeout=.5):
+                    #     break
 
-                        for _ in range(100):
+                    if app.wait_element({"title": "1С:Предприятие", "class_name": "V8NewLocalFrameBaseWnd", "control_type": "Window",
+                                         "visible_only": True, "enabled_only": True, "found_index": 0}, timeout=1):
+                        app.parent_switch({"title": "1С:Предприятие", "class_name": "V8NewLocalFrameBaseWnd", "control_type": "Window",
+                                           "visible_only": True, "enabled_only": True, "found_index": 0})
+                        app.find_element({"title": "Нет", "class_name": "", "control_type": "Button",
+                                          "visible_only": True, "enabled_only": True, "found_index": 0}).click()
 
-                            app.find_element({"title": "Провести", "class_name": "", "control_type": "Button",
-                                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}, timeout=1).click()
-                            sleep(1.5)
-                            if app.wait_element({"title": "Отмена проведения", "class_name": "", "control_type": "Button",
-                                                 "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}, timeout=.5):
-                                break
+                        update_in_db(session, row, 'failed last', None, None,
+                                     None, None, None, False)
+
+                    with suppress(Exception):
+                        app.find_element({"title_re": r"Конфликт блокировок.*", "parent": None}, timeout=7).parent(1).find_element(
+                            {
+                                "title_re": "OK",
+                                "control_type": "Button",
+                            },
+                            timeout=1,
+                        ).click()
 
                     app.find_element({"title": "ОК", "class_name": "", "control_type": "Button",
                                       "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
@@ -1572,19 +1705,29 @@ def performer(processing_date, processing_date_short, half_year_back_date):
                                  None, None, None, None)
 
             else:
-                print('koks')
-                # contragent = 'ПРОКТЕР ЭНД ГЭМБЛ КАЗАХСТАН ДИСТРИБЬЮШН ТОО (13623)'
-                cur_date = processing_date
-                # cur_date = '16.03.2023'
-                search_date = datetime.datetime.strptime(cur_date, '%d.%m.%Y') - datetime.timedelta(days=1)
-                summ = 13459033.0
-
-                print(cur_date, search_date)
 
                 if row.contragent == 'ПРОКТЕР ЭНД ГЭМБЛ КАЗАХСТАН ДИСТРИБЬЮШН ТОО (13623)':
 
                     update_in_db(session, row, 'processing', None, None,
                                  None, None, None, None)
+
+                    cur_date = row.payment_date.strftime('%d.%m.%y')  # processing_date
+                    search_date = cur_date
+                    # search_date = cur_date - datetime.timedelta(days=1)  # datetime.datetime.strptime(cur_date, '%d.%m.%Y')
+
+                    cur_day_index_ = calendar[calendar['Day'] == cur_date]['Type'].index[0]
+                    cur_day_type_ = calendar[calendar['Day'] == cur_date]['Type'].iloc[0]
+
+                    if cur_day_type_ == 'Holiday':
+                        return 0
+
+                    for i in range(cur_day_index_ - 1, -1, -1):
+                        if calendar['Type'].iloc[i] == 'Working':
+                            search_date = calendar['Day'].iloc[i]
+                            search_date = datetime.date(int(f'20{search_date.split('.')[2]}'), int(search_date.split('.')[1]), int(search_date.split('.')[0]))
+                            break
+
+                    print('DATES TO PROC:', cur_date, search_date)
 
                     print('P&G!!!')
 
@@ -1641,10 +1784,12 @@ def performer(processing_date, processing_date_short, half_year_back_date):
 
                         invoice = str(app.find_element({"title_re": ".* Договор контрагента", "class_name": "", "control_type": "Custom",
                                                         "visible_only": True, "enabled_only": True, "found_index": 0}).element.element_info.element.CurrentName).replace(' Договор контрагента', '')
+                        summ_ = str(app.find_element({"title_re": ".* Сумма документа", "class_name": "", "control_type": "Custom",
+                                                      "visible_only": True, "enabled_only": True, "found_index": 0}).element.element_info.element.CurrentName).replace(' Сумма документа', '')
 
                         logger.warning(f'Found invoice: {invoice}')
 
-                        all_invoices.append({invoice: row.payment_sum})
+                        all_invoices.append({invoice: summ_})
 
                         app.open("Окна", "Закрыть все")
 
@@ -1718,9 +1863,85 @@ def performer(processing_date, processing_date_short, half_year_back_date):
                         app.parent_switch({"title": "", "class_name": "", "control_type": "Pane",
                                            "visible_only": True, "enabled_only": True, "found_index": 34})
 
+                        cancel_check = {"title": "Отмена проведения", "class_name": "", "control_type": "Button",
+                                        "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}
+
+                        if app.wait_element(cancel_check, timeout=5):
+                            app.find_element(cancel_check).click()
+
+                            app.find_element({"title": "Записать", "class_name": "", "control_type": "Button",
+                                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
+
                         if len(all_invoices) > 1:
                             app.find_element({"title": "Список", "class_name": "", "control_type": "Button",
                                               "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
+
+                            dds_statement = 'Крат.деб. задолж-ть покупат-ей за услуги в тенге'
+                            pnl = 'Поступления от маркетинговой деятельности'
+                            bill_calculations = 1210
+                            bill_advances = 3510
+
+                            for ind__, invoice in enumerate(all_invoices):
+
+                                for key_, val_ in invoice.items():
+
+                                    if ind__ == 0:
+                                        print('Kekus')
+                                        invoice_contragent = app.find_element({"title_re": ".* Договор контрагента", "class_name": "", "control_type": "Custom",
+                                                                               "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}, timeout=120)
+                                        invoice_contragent.click(double=True)
+                                        invoice_contragent.type_keys(key_, protect_first=True)
+                                        invoice_contragent.type_keys(app.keys.TAB)
+
+                                        app.find_element({"title_re": ".*Сумма платежа", "class_name": "", "control_type": "Edit",
+                                                          "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}, timeout=130).type_keys(val_, app.keys.TAB)
+
+                                    else:
+                                        app.find_element({"title": "Добавить", "class_name": "", "control_type": "Button",
+                                                          "visible_only": True, "enabled_only": True, "found_index": 1, "parent": app.root}).click()
+
+                                        app.find_element({"title": "Договор контрагента", "class_name": "", "control_type": "Edit",
+                                                          "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
+                                        app.find_element({"title": "Договор контрагента", "class_name": "", "control_type": "Edit",
+                                                          "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).type_keys(key_, protect_first=True)
+                                        app.find_element({"title": "Договор контрагента", "class_name": "", "control_type": "Edit",
+                                                          "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).type_keys(app.keys.TAB)
+
+                                        app.find_element({"title": "Сумма платежа", "class_name": "", "control_type": "Edit",
+                                                          "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
+                                        app.find_element({"title": "Сумма платежа", "class_name": "", "control_type": "Edit",
+                                                          "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).type_keys(val_, app.keys.TAB)
+                                        print()
+                                        app.find_element({"title": " Ставка НДС", "class_name": "", "control_type": "Custom",
+                                                          "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
+                                        app.find_element({"title": " Ставка НДС", "class_name": "", "control_type": "Custom",
+                                                          "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).type_keys('12%', protect_first=True)
+                                        app.find_element({"title": " Ставка НДС", "class_name": "", "control_type": "Custom",
+                                                          "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).type_keys(app.keys.TAB * 2)
+
+                                    app.find_element({"title": " Статья ДДС", "class_name": "", "control_type": "Custom",
+                                                      "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
+                                    app.find_element({"title": " Статья ДДС", "class_name": "", "control_type": "Custom",
+                                                      "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).type_keys(dds_statement)
+
+                                    app.find_element({"title": " Доход расход", "class_name": "", "control_type": "Custom",
+                                                      "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
+                                    app.find_element({"title": " Доход расход", "class_name": "", "control_type": "Custom",
+                                                      "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).type_keys(pnl)
+
+                                    app.find_element({"title": " Филиал", "class_name": "", "control_type": "Custom",
+                                                      "visible_only": True, "enabled_only": True, "found_index": 1, "parent": app.root}).click()
+                                    app.find_element({"title": " Филиал", "class_name": "", "control_type": "Custom",
+                                                      "visible_only": True, "enabled_only": True, "found_index": 1, "parent": app.root}).type_keys('ТОО "Magnum Cash', app.keys.TAB)
+
+                            print()
+
+                            app.find_element({"title": "Провести", "class_name": "", "control_type": "Button",
+                                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
+
+                            app.find_element({"title": "ОК", "class_name": "", "control_type": "Button",
+                                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
+
                         else:
 
                             app.find_element({"title": "", "class_name": "", "control_type": "Edit",
@@ -1792,7 +2013,7 @@ def performer(processing_date, processing_date_short, half_year_back_date):
                                                   "visible_only": True, "enabled_only": True, "found_index": 19, "parent": app.root}).click()
                                 app.find_element({"title": "", "class_name": "", "control_type": "Edit",
                                                   "visible_only": True, "enabled_only": True, "found_index": 19, "parent": app.root}
-                                                 ).type_keys(app.keys.RIGHT * 50, app.keys.BACKSPACE * 100, 'ТОО "Magnum Cash&Carry"', app.keys.TAB)
+                                                 ).type_keys(app.keys.RIGHT * 50, app.keys.BACKSPACE * 100, 'ТОО "Magnum Cash', app.keys.TAB)
                             print()
                             app.find_element({"title": "ОК", "class_name": "", "control_type": "Button",
                                               "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
@@ -1801,6 +2022,11 @@ def performer(processing_date, processing_date_short, half_year_back_date):
                             print()
 
                 else:
+
+                    cur_date = row.payment_date  # processing_date
+                    search_date = cur_date - datetime.timedelta(days=1)  # datetime.datetime.strptime(cur_date, '%d.%m.%Y')
+
+                    print(cur_date, search_date)
 
                     if 2.7 <= (datetime.datetime.now() - row.payment_date).total_seconds() / 86400:
                         app = Odines()
@@ -1820,53 +2046,53 @@ def performer(processing_date, processing_date_short, half_year_back_date):
 
                         all_invoices = []
 
-                        # for index in range(len(df)):
-                        #
-                        #     app.parent_switch(app.root)
-                        #
-                        #     app.open('Продажа', 'Счета-фактуры выданные', 'Счет-фактура выданный', maximize_inner=True)
-                        #
-                        #     parent_ = app.parent
-                        #
-                        #     app.filter({'Номер': ('Равно', df['Ссылка'].iloc[index]), 'Контрагент': ('Равно', row.contragent), 'Сумма документа': ('Равно', 0 - df['Сумма в валюте документа'].iloc[index])})
-                        #
-                        #     logger.warning(f'Checkpoint8 | {datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")}')
-                        #
-                        #     if app.wait_element({"title": "1С:Предприятие", "class_name": "V8NewLocalFrameBaseWnd", "control_type": "Window",
-                        #                          "visible_only": True, "enabled_only": True, "found_index": 0}, timeout=1):
-                        #         app.parent_switch({"title": "1С:Предприятие", "class_name": "V8NewLocalFrameBaseWnd", "control_type": "Window",
-                        #                            "visible_only": True, "enabled_only": True, "found_index": 0})
-                        #         app.find_element({"title": "Нет", "class_name": "", "control_type": "Button",
-                        #                           "visible_only": True, "enabled_only": True, "found_index": 0}).click()
-                        #
-                        #         update_in_db(session, row, 'processing', None, None,
-                        #                      None, None, False, None)
-                        #
-                        #         # continue
-                        #
-                        #     # app.parent_switch(parent_, maximize=True)
-                        #
-                        #     if app.wait_element({"title": "Развернуть", "class_name": "", "control_type": "Button",
-                        #                          "visible_only": True, "enabled_only": True, "found_index": 0}, timeout=1):
-                        #         app.find_element({"title": "Развернуть", "class_name": "", "control_type": "Button",
-                        #                           "visible_only": True, "enabled_only": True, "found_index": 0}).click()
-                        #
-                        #     app.find_element({"title_re": ".* Контрагент", "class_name": "", "control_type": "Custom",
-                        #                       "visible_only": True, "enabled_only": True, "found_index": 0}).click(double=True)
-                        #
-                        #     invoice = str(app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                        #                                     "visible_only": True, "enabled_only": True, "found_index": 3}).element.iface_value.CurrentValue)
-                        #
-                        #     app.find_element({"title": "Закрыть", "class_name": "", "control_type": "Button",
-                        #                       "visible_only": True, "enabled_only": True, "found_index": 3}).click()
-                        #
-                        #     all_invoices.append({invoice: df['Сумма в валюте документа'].iloc[index]})
-                        #
-                        #     app.parent_back(1)
-                        #
-                        #     app.open("Окна", "Закрыть все")
+                        for index in range(len(df)):
 
-                        all_invoices = [{'ДС№1 к ДС АБ-13(04951-2016)F19 от 01 апрель 2023г': -3511800}, {'М/С-23/604169 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -459510}, {'М/С-23/605796 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -8946363}, {'М/С-23/608751 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -98976}, {'М/С-23/609514 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -14687156}, {'М/С-23/609683 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -168412}, {'М/С-23/610662 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -30671}, {'М/С-23/611527 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -16374}, {'М/С-23/612732 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -17552270}, {'М/С-23/603303 к ДМУ-12(04951-2016)-КИМБЕРЛИ': -28121895}, {'М/С-23/612583 к ДМУ-12(04951-2016)-КИМБЕРЛИ': -40084026}, {'М/С-23/612592 к ДМУ-12(04951-2016)-КИМБЕРЛИ': -86970371}, {'М/С-23/612596 к ДМУ-12(04951-2016)-КИМБЕРЛИ': -106764157}, {'М/С-23/613838 к ДМУ-12(04951-2016)-КИМБЕРЛИ': -32458138}, {'М/С-23/615780 к ДМУ-12(04951-2016)-КИМБЕРЛИ': -34940864}, {'М/С-23/616090 к ДМУ-12(04951-2016)-КИМБЕРЛИ': -32073467}, {'М/С-23/619560 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -1000000}, {'М/С-23/566254 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -10000000}, {'М/С-23/568650 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -1260000}, {'М/С-23/568783 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -135000}, {'М/С-23/568786 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -1440000}, {'М/С-23/615926 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -36658}, {'М/С-23/619567 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -16000000}, {'М/С-9/565880 к ДМУ-12(04951-2016)-КИМБЕРЛИ': -2520000}, {'ДС №3 от 01.11.2023г к ДС АБ-13(04951-2016)-F19 от 01.07.2023г.': -349096}]
+                            app.parent_switch(app.root)
+
+                            app.open('Продажа', 'Счета-фактуры выданные', 'Счет-фактура выданный', maximize_inner=True)
+
+                            parent_ = app.parent
+
+                            app.filter({'Номер': ('Равно', df['Ссылка'].iloc[index]), 'Контрагент': ('Равно', row.contragent), 'Сумма документа': ('Равно', 0 - df['Сумма в валюте документа'].iloc[index])})
+
+                            logger.warning(f'Checkpoint8 | {datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")}')
+
+                            if app.wait_element({"title": "1С:Предприятие", "class_name": "V8NewLocalFrameBaseWnd", "control_type": "Window",
+                                                 "visible_only": True, "enabled_only": True, "found_index": 0}, timeout=1):
+                                app.parent_switch({"title": "1С:Предприятие", "class_name": "V8NewLocalFrameBaseWnd", "control_type": "Window",
+                                                   "visible_only": True, "enabled_only": True, "found_index": 0})
+                                app.find_element({"title": "Нет", "class_name": "", "control_type": "Button",
+                                                  "visible_only": True, "enabled_only": True, "found_index": 0}).click()
+
+                                update_in_db(session, row, 'processing', None, None,
+                                             None, None, False, None)
+
+                                # continue
+
+                            # app.parent_switch(parent_, maximize=True)
+
+                            if app.wait_element({"title": "Развернуть", "class_name": "", "control_type": "Button",
+                                                 "visible_only": True, "enabled_only": True, "found_index": 0}, timeout=1):
+                                app.find_element({"title": "Развернуть", "class_name": "", "control_type": "Button",
+                                                  "visible_only": True, "enabled_only": True, "found_index": 0}).click()
+
+                            app.find_element({"title_re": ".* Контрагент", "class_name": "", "control_type": "Custom",
+                                              "visible_only": True, "enabled_only": True, "found_index": 0}).click(double=True)
+
+                            invoice = str(app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                                            "visible_only": True, "enabled_only": True, "found_index": 3}).element.iface_value.CurrentValue)
+
+                            app.find_element({"title": "Закрыть", "class_name": "", "control_type": "Button",
+                                              "visible_only": True, "enabled_only": True, "found_index": 3}).click()
+
+                            all_invoices.append({invoice: df['Сумма в валюте документа'].iloc[index]})
+
+                            app.parent_back(1)
+
+                            app.open("Окна", "Закрыть все")
+
+                        # all_invoices = [{'ДС№1 к ДС АБ-13(04951-2016)F19 от 01 апрель 2023г': -3511800}, {'М/С-23/604169 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -459510}, {'М/С-23/605796 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -8946363}, {'М/С-23/608751 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -98976}, {'М/С-23/609514 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -14687156}, {'М/С-23/609683 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -168412}, {'М/С-23/610662 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -30671}, {'М/С-23/611527 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -16374}, {'М/С-23/612732 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -17552270}, {'М/С-23/603303 к ДМУ-12(04951-2016)-КИМБЕРЛИ': -28121895}, {'М/С-23/612583 к ДМУ-12(04951-2016)-КИМБЕРЛИ': -40084026}, {'М/С-23/612592 к ДМУ-12(04951-2016)-КИМБЕРЛИ': -86970371}, {'М/С-23/612596 к ДМУ-12(04951-2016)-КИМБЕРЛИ': -106764157}, {'М/С-23/613838 к ДМУ-12(04951-2016)-КИМБЕРЛИ': -32458138}, {'М/С-23/615780 к ДМУ-12(04951-2016)-КИМБЕРЛИ': -34940864}, {'М/С-23/616090 к ДМУ-12(04951-2016)-КИМБЕРЛИ': -32073467}, {'М/С-23/619560 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -1000000}, {'М/С-23/566254 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -10000000}, {'М/С-23/568650 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -1260000}, {'М/С-23/568783 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -135000}, {'М/С-23/568786 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -1440000}, {'М/С-23/615926 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -36658}, {'М/С-23/619567 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -16000000}, {'М/С-9/565880 к ДМУ-12(04951-2016)-КИМБЕРЛИ': -2520000}, {'ДС №3 от 01.11.2023г к ДС АБ-13(04951-2016)-F19 от 01.07.2023г.': -349096}]
 
                         print(all_invoices)
 
@@ -1939,7 +2165,7 @@ def performer(processing_date, processing_date_short, half_year_back_date):
                                     if ind__ == 0:
                                         print('Kekus')
                                         invoice_contragent = app.find_element({"title_re": ".* Договор контрагента", "class_name": "", "control_type": "Custom",
-                                                                                       "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}, timeout=120)
+                                                                               "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}, timeout=120)
                                         invoice_contragent.click(double=True)
                                         invoice_contragent.type_keys(key_, protect_first=True)
                                         invoice_contragent.type_keys(app.keys.TAB)
@@ -1986,21 +2212,26 @@ def performer(processing_date, processing_date_short, half_year_back_date):
                                     app.find_element({"title": " Филиал", "class_name": "", "control_type": "Custom",
                                                       "visible_only": True, "enabled_only": True, "found_index": 1, "parent": app.root}).click()
                                     app.find_element({"title": " Филиал", "class_name": "", "control_type": "Custom",
-                                                      "visible_only": True, "enabled_only": True, "found_index": 1, "parent": app.root}).type_keys('ТОО "Magnum Cash&Carry"')
+                                                      "visible_only": True, "enabled_only": True, "found_index": 1, "parent": app.root}).type_keys('ТОО "Magnum Cash', app.keys.TAB)
 
                             print()
+
+                            app.find_element({"title": "Провести", "class_name": "", "control_type": "Button",
+                                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
+
+                            app.find_element({"title": "ОК", "class_name": "", "control_type": "Button",
+                                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
                         # update_in_db(session, row, 'kekus', None, None,
                         #              None, None, None, None)
 
-        # except Exception as row_error:
-        #     traceback.print_exc()
-        #     logger.warning(f'Error on the row occured: {row_error}')
-            # update_in_db(session, row, 'failed', None, None,
-            #              None, None, None, None, error_reason_=str(traceback.format_exc())[:500])
+        except Exception as row_error:
+            traceback.print_exc()
+            logger.warning(f'Error on the row occured: {row_error}')
+            update_in_db(session, row, 'failed', None, None,
+                         None, None, None, None, error_reason_=str(traceback.format_exc())[:500])
 
 
 def main():
-
     try:
 
         logger.info('Process started')
@@ -2038,9 +2269,9 @@ def main():
             performer(processing_date_, processing_date_short_, half_year_back_date)
 
     except Exception as error:
-            logger.info(f'Error occured: {error}')
-            logger.warning(f'Error occured: {error}')
-            traceback.print_exc()
+        logger.info(f'Error occured: {error}')
+        logger.warning(f'Error occured: {error}')
+        traceback.print_exc()
 
 
 if __name__ == '__main__':
