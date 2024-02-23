@@ -30,6 +30,8 @@ class Table_(Base):
     contragent = Column(String(512), default=None)
     branch = Column(String(512), default=None)
     invoice_id = Column(String(512), default=None)
+    origin_branch = Column(String(512), default=None)
+    origin_invoice_id = Column(String(512), default=None)
     invoice_payment_to_contragent = Column(Boolean, default=None)
     tmz_realization = Column(Boolean, default=None)
     invoice_factura = Column(Boolean, default=None)

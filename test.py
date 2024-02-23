@@ -12,7 +12,7 @@
 #
 # from config import engine_kwargs
 # from models import Base, add_to_db, get_all_data, update_in_db, get_all_data_by_status
-# from tools.app import App
+from tools.app import App
 # import pyautogui as pag
 #
 # import pandas as pd
@@ -183,8 +183,15 @@
 #             # df__ = df_notna[df_notna['Окончание смены_1'] == dates].copy().drop(columns=['Окончание смены_1'])
 #             df_notna[df_notna['Окончание смены_1'] == dates].to_excel(fr'C:\Users\Abdykarim.D\Documents\BI\A\outsourcingshifts {str(dates.split()[0]).replace(".", "_")}.xlsx', index=False)
 
+app = App('')
 
-print(754/58)
+a = str(app.find_element({"title": "КФ Договор аренды №УАН_00732-2023 от 01.11.2023г. Субконто 1(НУ)", "class_name": "", "control_type": "Custom",
+                          "visible_only": True, "enabled_only": True, "found_index": 0}).element.element_info.rich_text).replace(' Субконто 1(НУ)', '')
+
+print(a)
+print()
+
+
 
 # import pandas as pd
 # conn = psycopg2.connect(dbname='adb', host='172.16.10.22', port='5432',
