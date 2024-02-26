@@ -185,10 +185,9 @@ from tools.app import App
 
 app = App('')
 
-a = str(app.find_element({"title": "КФ Договор аренды №УАН_00732-2023 от 01.11.2023г. Субконто 1(НУ)", "class_name": "", "control_type": "Custom",
-                          "visible_only": True, "enabled_only": True, "found_index": 0}).element.element_info.rich_text).replace(' Субконто 1(НУ)', '')
-
-print(a)
+a = app.find_element({"title": "Записать", "class_name": "", "control_type": "Button",
+                      "visible_only": True, "enabled_only": True, "found_index": 0})
+print(app.parent.element.children())
 print()
 
 

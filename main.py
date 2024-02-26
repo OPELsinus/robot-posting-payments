@@ -13,8 +13,9 @@ from pywinauto import keyboard
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from config import logger, process_list_path, production_calendar_path, form_document_path, engine_kwargs, main_executor, ip_address, download_path, tg_token
+from config import logger, process_list_path, production_calendar_path, form_document_path, engine_kwargs, to_whom, procter_path, kimberly_path, nds, main_executor, ip_address, download_path, tg_token
 from models import Base, add_to_db, get_all_data, get_all_data_by_status, update_in_db
+from tools.smtp import smtp_send
 from tools.app import App
 from tools.odines import Odines
 from tools.process import kill_process_list
@@ -111,6 +112,7 @@ def performer(processing_date, processing_date_short, half_year_back_date):
 
     get_all_payments_excel = False
     get_all_needed_payments = False
+    check_cancel_approval = True
     check_payment_to_contragent_ = True
     check_payment_tmz_realization_ = True
     check_payment_factura_ = True
@@ -121,8 +123,8 @@ def performer(processing_date, processing_date_short, half_year_back_date):
     second_excel_path = os.path.join(download_path, f'chpokus_{ip_address.replace(".", "_")}.xlsx')
     subconto_path = os.path.join(download_path, f'subconto_{ip_address.replace(".", "_")}.xlsx')
 
-    procter_path = r'\\vault.magnum.local\common\Stuff\_06_Бухгалтерия\Выписки\Для Робота\Для Проктер\PaymentReportDetails (13).xlsx'
-    kimberly_path = r'\\vault.magnum.local\common\Stuff\_06_Бухгалтерия\Выписки\Для Робота\Для Кимберли-Кларк'
+    # procter_path = r'\\vault.magnum.local\common\Stuff\_06_Бухгалтерия\Выписки\Для Робота\Для Проктер\PaymentReportDetails (13).xlsx'
+    # kimberly_path = r'\\vault.magnum.local\common\Stuff\_06_Бухгалтерия\Выписки\Для Робота\Для Кимберли-Кларк'
 
     temp_path = os.path.join(download_path, f'temp_file_{ip_address.replace(".", "_")}.xlsx')  # os.path.join(working_path)
 
@@ -158,223 +160,199 @@ def performer(processing_date, processing_date_short, half_year_back_date):
         app = Odines()
         app.auth()
 
-        if get_all_payments_excel:
+        for tries in range(2):
 
-            app.open('Банк и касса', 'Платежное поручение входящее')
+            if get_all_payments_excel:
 
-            app.open('Файл', 'Открыть...')
+                app.open('Банк и касса', 'Платежное поручение входящее')
 
-            app1 = App('')
-            app1.wait_element({"title": "Открытие", "class_name": "#32770", "control_type": "Window",
-                               "visible_only": True, "enabled_only": True, "found_index": 0})
+                app.open('Файл', 'Открыть...')
 
-            app1.find_element({"title": "Имя файла:", "class_name": "Edit", "control_type": "Edit",
-                               "visible_only": True, "enabled_only": True, "found_index": 0}).click()
+                app1 = App('')
+                app1.wait_element({"title": "Открытие", "class_name": "#32770", "control_type": "Window",
+                                   "visible_only": True, "enabled_only": True, "found_index": 0})
 
-            app1.find_element({"title": "Имя файла:", "class_name": "Edit", "control_type": "Edit",
-                               "visible_only": True, "enabled_only": True, "found_index": 0}).type_keys(form_document_path, app.keys.ENTER)
+                app1.find_element({"title": "Имя файла:", "class_name": "Edit", "control_type": "Edit",
+                                   "visible_only": True, "enabled_only": True, "found_index": 0}).click()
 
-            # if app.wait_element({"title": "1С:Предприятие", "class_name": "V8NewLocalFrameBaseWnd", "control_type": "Window",
-            #                      "visible_only": True, "enabled_only": True, "found_index": 0}, timeout=1):
-            #     app.find_element({"title": "Да", "class_name": "", "control_type": "Button",
-            #                       "visible_only": True, "enabled_only": True, "found_index": 0}).click()
+                app1.find_element({"title": "Имя файла:", "class_name": "Edit", "control_type": "Edit",
+                                   "visible_only": True, "enabled_only": True, "found_index": 0}).type_keys(form_document_path, app.keys.ENTER)
 
-            app.parent_switch({"title": "", "class_name": "", "control_type": "Pane",
-                               "visible_only": True, "enabled_only": True, "found_index": 34})
+                # if app.wait_element({"title": "1С:Предприятие", "class_name": "V8NewLocalFrameBaseWnd", "control_type": "Window",
+                #                      "visible_only": True, "enabled_only": True, "found_index": 0}, timeout=1):
+                #     app.find_element({"title": "Да", "class_name": "", "control_type": "Button",
+                #                       "visible_only": True, "enabled_only": True, "found_index": 0}).click()
 
-            app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}, timeout=3).click()
-            app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}, timeout=3).type_keys("{BACKSPACE}" * 15)
-            app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}, timeout=3).type_keys(processing_date)
+                app.parent_switch({"title": "", "class_name": "", "control_type": "Pane",
+                                   "visible_only": True, "enabled_only": True, "found_index": 34})
 
-            app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                              "visible_only": True, "enabled_only": True, "found_index": 1, "parent": app.root}, timeout=3).click()
-            app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}, timeout=3).type_keys("{BACKSPACE}" * 15)
-            app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                              "visible_only": True, "enabled_only": True, "found_index": 1, "parent": app.root}, timeout=3).type_keys(processing_date)
+                app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                  "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}, timeout=3).click()
+                app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                  "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}, timeout=3).type_keys("{BACKSPACE}" * 15)
+                app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                  "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}, timeout=3).type_keys(processing_date)
 
-            app.find_element({"title": "", "class_name": "", "control_type": "ComboBox",
-                              "visible_only": True, "enabled_only": True, "found_index": 1, "parent": app.root}, timeout=3).click()
-            app.find_element({"title": "", "class_name": "", "control_type": "ComboBox",
-                              "visible_only": True, "enabled_only": True, "found_index": 1, "parent": app.root}, timeout=3).type_keys(app.keys.CONTROL, app.keys.DOWN)
+                app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                  "visible_only": True, "enabled_only": True, "found_index": 1, "parent": app.root}, timeout=3).click()
+                app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                  "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}, timeout=3).type_keys("{BACKSPACE}" * 15)
+                app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                  "visible_only": True, "enabled_only": True, "found_index": 1, "parent": app.root}, timeout=3).type_keys(processing_date)
 
-            found = False
-            previous_list = None
+                app.find_element({"title": "", "class_name": "", "control_type": "ComboBox",
+                                  "visible_only": True, "enabled_only": True, "found_index": 1, "parent": app.root}, timeout=3).click()
+                app.find_element({"title": "", "class_name": "", "control_type": "ComboBox",
+                                  "visible_only": True, "enabled_only": True, "found_index": 1, "parent": app.root}, timeout=3).type_keys(app.keys.CONTROL, app.keys.DOWN)
 
-            while not found:
+                found = False
+                previous_list = None
 
-                current_list = app.find_elements(
-                    selector={
-                        "control_type": "ListItem",
-                        "visible_only": True,
-                        "enabled_only": True,
-                        "parent": app.root
-                    },
-                    timeout=3,
-                )
+                while not found:
 
-                current_list_texts = [
-                    item.element.element_info.rich_text for item in current_list
-                ]
+                    current_list = app.find_elements(
+                        selector={
+                            "control_type": "ListItem",
+                            "visible_only": True,
+                            "enabled_only": True,
+                            "parent": app.root
+                        },
+                        timeout=3,
+                    )
 
-                for item, text in zip(current_list, current_list_texts):
-                    # print(item, text, sep=' | ')
-                    if text.replace(' ', '') == 'ПлатежноеПоручениеВходящее':
-                        item.click()
-                        found = True
-                        break
+                    current_list_texts = [
+                        item.element.element_info.rich_text for item in current_list
+                    ]
 
-                if previous_list is not None:
-                    # Проверка, изменился ли список после прокрутки
-                    if current_list_texts == previous_list:
-                        break
+                    for item, text in zip(current_list, current_list_texts):
+                        # print(item, text, sep=' | ')
+                        if text.replace(' ', '') == 'ПлатежноеПоручениеВходящее':
+                            item.click()
+                            found = True
+                            break
 
-                for _ in range(10):
-                    pag.hotkey('down')
-                previous_list = current_list_texts
+                    if previous_list is not None:
+                        # Проверка, изменился ли список после прокрутки
+                        if current_list_texts == previous_list:
+                            break
 
-            app.find_element({"title": "Выполнить", "class_name": "", "control_type": "Button",
-                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": None}, timeout=10).click(double=True)
+                    for _ in range(10):
+                        pag.hotkey('down')
+                    previous_list = current_list_texts
 
-            app.find_element({"title": "", "class_name": "", "control_type": "DataGrid",
-                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}, timeout=3).click()
+                app.find_element({"title": "Выполнить", "class_name": "", "control_type": "Button",
+                                  "visible_only": True, "enabled_only": True, "found_index": 0, "parent": None}, timeout=10).click(double=True)
 
-            save_the_report(app, first_excel_path)
+                app.find_element({"title": "", "class_name": "", "control_type": "DataGrid",
+                                  "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}, timeout=3).click()
 
-            app.open("Окна", "Закрыть все")
-            # app.quit()
+                save_the_report(app, first_excel_path)
 
-        if get_all_needed_payments:
+                app.open("Окна", "Закрыть все")
+                # app.quit()
 
-            app.parent_switch(app.root)
-            app.open('Банк и касса', 'Платежное поручение входящее')
-            app.find_element({"title": "Установить интервал дат...", "class_name": "", "control_type": "Button",
-                              "visible_only": True, "enabled_only": True, "found_index": 0}).click()
+            if get_all_needed_payments:
 
-            app.parent_switch({"title": "Настройка периода", "class_name": "V8NewLocalFrameBaseWnd", "control_type": "Window",
-                               "visible_only": True, "enabled_only": True, "found_index": 0})
+                app.parent_switch(app.root)
+                app.open('Банк и касса', 'Платежное поручение входящее')
+                app.find_element({"title": "Установить интервал дат...", "class_name": "", "control_type": "Button",
+                                  "visible_only": True, "enabled_only": True, "found_index": 0}).click()
 
-            app.find_element({"title": "Период", "class_name": "", "control_type": "TabItem",
-                              "visible_only": True, "enabled_only": True, "found_index": 0}).click()
+                app.parent_switch({"title": "Настройка периода", "class_name": "V8NewLocalFrameBaseWnd", "control_type": "Window",
+                                   "visible_only": True, "enabled_only": True, "found_index": 0})
 
-            app.find_element({"title": "День", "class_name": "", "control_type": "RadioButton",
-                              "visible_only": True, "enabled_only": True, "found_index": 0}).click()
+                app.find_element({"title": "Период", "class_name": "", "control_type": "TabItem",
+                                  "visible_only": True, "enabled_only": True, "found_index": 0}).click()
 
-            app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                              "visible_only": True, "enabled_only": True, "found_index": 0}).click()
+                app.find_element({"title": "День", "class_name": "", "control_type": "RadioButton",
+                                  "visible_only": True, "enabled_only": True, "found_index": 0}).click()
 
-            app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                              "visible_only": True, "enabled_only": True, "found_index": 0}).type_keys(processing_date)
+                app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                  "visible_only": True, "enabled_only": True, "found_index": 0}).click()
 
-            app.find_element({"title": "OK", "class_name": "", "control_type": "Button",
-                              "visible_only": True, "enabled_only": True, "found_index": 0}).click()
+                app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                  "visible_only": True, "enabled_only": True, "found_index": 0}).type_keys(processing_date)
 
-            # app.parent_switch(app.root)
-            app.parent_back(1)
+                app.find_element({"title": "OK", "class_name": "", "control_type": "Button",
+                                  "visible_only": True, "enabled_only": True, "found_index": 0}).click()
 
-            app.find_element({"title": "Установить отбор и сортировку списка...", "class_name": "", "control_type": "Button",
-                              "visible_only": True, "enabled_only": True, "found_index": 0}).click()
+                # app.parent_switch(app.root)
+                app.parent_back(1)
 
-            app.parent_switch({"title": "Отбор и сортировка", "class_name": "V8NewLocalFrameBaseWnd", "control_type": "Window",
-                               "visible_only": True, "enabled_only": True, "found_index": 0})
+                app.find_element({"title": "Установить отбор и сортировку списка...", "class_name": "", "control_type": "Button",
+                                  "visible_only": True, "enabled_only": True, "found_index": 0}).click()
 
-            app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                              "visible_only": True, "enabled_only": True, "found_index": 7}).click()
-            app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                              "visible_only": True, "enabled_only": True, "found_index": 7}).type_keys('KZT')
+                app.parent_switch({"title": "Отбор и сортировка", "class_name": "V8NewLocalFrameBaseWnd", "control_type": "Window",
+                                   "visible_only": True, "enabled_only": True, "found_index": 0})
 
-            app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                              "visible_only": True, "enabled_only": True, "found_index": 9}).click()
-            app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                              "visible_only": True, "enabled_only": True, "found_index": 9}).type_keys('Оплата от покупателя')
+                app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                  "visible_only": True, "enabled_only": True, "found_index": 7}).click()
+                app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                  "visible_only": True, "enabled_only": True, "found_index": 7}).type_keys('KZT')
 
-            app.find_element({"title": "OK", "class_name": "", "control_type": "Button",
-                              "visible_only": True, "enabled_only": True, "found_index": 0}).click()
+                app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                  "visible_only": True, "enabled_only": True, "found_index": 9}).click()
+                app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                  "visible_only": True, "enabled_only": True, "found_index": 9}).type_keys('Оплата от покупателя')
 
-            app.parent_back(1)
+                app.find_element({"title": "OK", "class_name": "", "control_type": "Button",
+                                  "visible_only": True, "enabled_only": True, "found_index": 0}).click()
 
-            app.find_element({"title_re": ".* Номер", "class_name": "", "control_type": "Custom",
-                              "visible_only": True, "enabled_only": True, "found_index": 0}).click(right=True)
+                app.parent_back(1)
 
-            app.find_element({"title": "Вывести список...", "class_name": "", "control_type": "MenuItem",
-                              "visible_only": True, "enabled_only": True, "found_index": 0}, timeout=360).click()
+                app.find_element({"title_re": ".* Номер", "class_name": "", "control_type": "Custom",
+                                  "visible_only": True, "enabled_only": True, "found_index": 0}).click(right=True)
 
-            app.parent_switch({"title": "Вывести список", "class_name": "V8NewLocalFrameBaseWnd", "control_type": "Window",
-                               "visible_only": True, "enabled_only": True, "found_index": 0})
+                app.find_element({"title": "Вывести список...", "class_name": "", "control_type": "MenuItem",
+                                  "visible_only": True, "enabled_only": True, "found_index": 0}, timeout=360).click()
 
-            app.find_element({"title": "Выключить все", "class_name": "", "control_type": "Button",
-                              "visible_only": True, "enabled_only": True, "found_index": 0}).click()
+                app.parent_switch({"title": "Вывести список", "class_name": "V8NewLocalFrameBaseWnd", "control_type": "Window",
+                                   "visible_only": True, "enabled_only": True, "found_index": 0})
 
-            app.find_element({"title": "Включить все", "class_name": "", "control_type": "Button",
-                              "visible_only": True, "enabled_only": True, "found_index": 0}).click()
+                app.find_element({"title": "Выключить все", "class_name": "", "control_type": "Button",
+                                  "visible_only": True, "enabled_only": True, "found_index": 0}).click()
 
-            app.find_element({"title": "ОК", "class_name": "", "control_type": "Button",
-                              "visible_only": True, "enabled_only": True, "found_index": 0}).click()
+                app.find_element({"title": "Включить все", "class_name": "", "control_type": "Button",
+                                  "visible_only": True, "enabled_only": True, "found_index": 0}).click()
 
-            save_the_report(app, second_excel_path)
+                app.find_element({"title": "ОК", "class_name": "", "control_type": "Button",
+                                  "visible_only": True, "enabled_only": True, "found_index": 0}).click()
 
-            app.quit()
+                save_the_report(app, second_excel_path)
 
-            fix_excel_file_error(Path(first_excel_path))
+                app.quit()
 
-            df = pd.read_excel(first_excel_path, header=3)
+                fix_excel_file_error(Path(first_excel_path))
 
-            # print(df[df['ПометкаУдаления'] == 'Нет']['Номер'])
+                df = pd.read_excel(first_excel_path, header=3)
 
-            fix_excel_file_error(Path(second_excel_path))
+                # print(df[df['ПометкаУдаления'] == 'Нет']['Номер'])
 
-            main_df = pd.read_excel(second_excel_path)
+                fix_excel_file_error(Path(second_excel_path))
 
-            ids = []
-            summs = []
-            contragents = []
-            branches = []
+                main_df = pd.read_excel(second_excel_path)
 
-            for ind in range(len(main_df)):
-                if len(df[(df['ПометкаУдаления'] == 'Нет') & (df['Номер'] == main_df['Номер'].iloc[ind])]) != 0:
-                    ids.append(main_df['Номер'].iloc[ind])
-                    summs.append(main_df['Сумма документа'].iloc[ind])
-                    contragents.append(main_df['Контрагент'].iloc[ind])
-                    branches.append(main_df['Филиал'].iloc[ind])
+                if len(main_df) == 0:
+                    smtp_send('Добрый день!\nВыписки не загружены. Робот будет ждать 15 минут', subject='Разноска Входящих Платежей', to=to_whom, url='172.16.10.5', username='rpa.robot@magnum.kz')
+                    sleep(900)
+                    continue
 
-                    add_to_db(session, 'new', main_df['Дата'].iloc[ind], str(main_df['Номер'].iloc[ind]), main_df['Сумма документа'].iloc[ind], main_df['Контрагент'].iloc[ind],
-                              None, None, None, None, None, None)  # main_df['Филиал'].iloc[ind]
+                ids = []
+                summs = []
+                contragents = []
+                branches = []
 
-    #
-    #     rows = get_all_data_by_status(session, ['new'])
-    #
-    #     while len(rows) == 0:
-    #
-    #         rows = get_all_data_by_status(session, ['new'])
-    #
-    #         sleep(10)
+                for ind in range(len(main_df)):
 
-    # rows = get_all_data_by_status(session, ['new'])
-    #
-    # if len(rows) == 0:
-    # if True:
-    #     df = pd.read_excel(first_excel_path, header=3)
-    #     main_df = pd.read_excel(second_excel_path)
-    #
-    #     ids = []
-    #     summs = []
-    #     contragents = []
-    #     branches = []
-    #
-    #     for ind in range(len(main_df)):
-    #         if len(df[(df['ПометкаУдаления'] == 'Нет') & (df['Номер'] == main_df['Номер'].iloc[ind])]) != 0:
-    #             ids.append(main_df['Номер'].iloc[ind])
-    #             summs.append(main_df['Сумма документа'].iloc[ind])
-    #             contragents.append(main_df['Контрагент'].iloc[ind])
-    #             branches.append(main_df['Филиал'].iloc[ind])
-    #
-    #             # add_to_db(session, 'new', main_df['Дата'].iloc[ind], str(main_df['Номер'].iloc[ind]), main_df['Сумма документа'].iloc[ind], main_df['Контрагент'].iloc[ind],
-    #             #           main_df['Филиал'].iloc[ind], None, None, None, None, None)
-    #             add_to_db(session, 'new', main_df['Дата'].iloc[ind], str(main_df['Номер'].iloc[ind]), main_df['Сумма документа'].iloc[ind], main_df['Контрагент'].iloc[ind],
-    #                       None, None, None, None, None, None)
+                    if len(df[(df['ПометкаУдаления'] == 'Нет') & (df['Номер'] == main_df['Номер'].iloc[ind])]) != 0:
+                        ids.append(main_df['Номер'].iloc[ind])
+                        summs.append(main_df['Сумма документа'].iloc[ind])
+                        contragents.append(main_df['Контрагент'].iloc[ind])
+                        branches.append(main_df['Филиал'].iloc[ind])
+
+                        add_to_db(session, 'new', main_df['Дата'].iloc[ind], str(main_df['Номер'].iloc[ind]), main_df['Сумма документа'].iloc[ind], main_df['Контрагент'].iloc[ind],
+                                  None, None, None, None, None, None)  # main_df['Филиал'].iloc[ind]
+                break
 
     rows = get_all_data_by_status(session, ['new', 'processing'])
     ind = -1
@@ -395,8 +373,6 @@ def performer(processing_date, processing_date_short, half_year_back_date):
         print(f'Total rows: {len(rows)}')
         sleep(1)
 
-        # for ind, row in enumerate(rows):
-
         row = rows[0]
         ind += 1
 
@@ -404,23 +380,6 @@ def performer(processing_date, processing_date_short, half_year_back_date):
         #     continue
 
         logger.info(row.contragent)
-
-        # print('DDD:', datetime.datetime.now() - row.payment_date)
-
-        # if 'проктер' in str(row.contragent).lower():  # or 'кимберли' in str(row.contragent).lower():
-        #     continue
-
-        # if str(row.contragent).strip() != 'Ахметов ИП':
-        #     continue
-
-        # if row.contragent != 'РХМ Казахстан ТОО':
-        #     continue
-
-        # if '(' not in row.contragent:
-        #     continue
-        # continue
-
-        # if True:
 
         try:
 
@@ -443,7 +402,8 @@ def performer(processing_date, processing_date_short, half_year_back_date):
 
                 if_tovar = False
 
-                if True:
+                if check_cancel_approval:
+
                     app.open('Банк и касса', 'Платежное поручение входящее')
                     app.find_element({"title": "Установить интервал дат...", "class_name": "", "control_type": "Button",
                                       "visible_only": True, "enabled_only": True, "found_index": 0}).click()
@@ -1150,12 +1110,12 @@ def performer(processing_date, processing_date_short, half_year_back_date):
                                           "visible_only": True, "enabled_only": True, "found_index": 1}, timeout=1000).click()
 
                         app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                                          "visible_only": True, "enabled_only": True, "found_index": 1}).type_keys(app.keys.BACKSPACE * 15, processing_date)
+                                          "visible_only": True, "enabled_only": True, "found_index": 1}).type_keys(app.keys.BACKSPACE * 15, datetime.datetime.now().strftime('%d.%m.%Y'))
 
                         app.find_element({"title": "", "class_name": "", "control_type": "Edit",
                                           "visible_only": True, "enabled_only": True, "found_index": 2}).click()
                         app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                                          "visible_only": True, "enabled_only": True, "found_index": 2}).type_keys(app.keys.BACKSPACE * 15, processing_date)
+                                          "visible_only": True, "enabled_only": True, "found_index": 2}).type_keys(app.keys.BACKSPACE * 15, datetime.datetime.now().strftime('%d.%m.%Y'))  # processing_date
 
                         app.find_element({"title": "", "class_name": "", "control_type": "Edit",
                                           "visible_only": True, "enabled_only": True, "found_index": 0}).click()
@@ -1570,6 +1530,7 @@ def performer(processing_date, processing_date_short, half_year_back_date):
                     session.commit()
 
                     if skip:
+
                         print('CHECKPOINT FINAL 7')
 
                         update_in_db(session, row, 'skipped.1', branch, invoice,
@@ -1588,8 +1549,13 @@ def performer(processing_date, processing_date_short, half_year_back_date):
                         app.find_element({"title": "Записать", "class_name": "", "control_type": "Button",
                                           "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
 
-                        app.find_element({"title": "Закрыть", "class_name": "", "control_type": "Button",
-                                          "visible_only": True, "enabled_only": True, "found_index": 4}).click()
+                        el = app.find_element({"title": "Записать", "class_name": "", "control_type": "Button",
+                                               "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root})
+                        el.parent().find_element({"title": "Закрыть"}).click()
+                        el = None
+
+                        # app.find_element({"title": "Закрыть", "class_name": "", "control_type": "Button",
+                        #                   "visible_only": True, "enabled_only": True, "found_index": 4, "parent": app.root}).click()
 
                         update_in_db(session, row, 'skipped', branch, invoice,
                                      None, None, None, None)
@@ -1600,7 +1566,9 @@ def performer(processing_date, processing_date_short, half_year_back_date):
                     if if_tovar:
                         invoice = 'Договор реализации'
 
-                    if branch is None or invoice == 'Без договора':
+                    print(f'DATA TO FILL: Branch: {branch} | Invoice: {invoice} |')
+
+                    if branch is None or invoice == 'Без договора' or invoice == '' or invoice is None:
                         app.find_element({"title": "", "class_name": "", "control_type": "Edit",
                                           "visible_only": True, "enabled_only": True, "found_index": branch_index, "parent": app.root}).click()
                         app.find_element({"title": "", "class_name": "", "control_type": "Edit",
@@ -1820,357 +1788,81 @@ def performer(processing_date, processing_date_short, half_year_back_date):
 
             else:
 
-                if row.contragent == 'ПРОКТЕР ЭНД ГЭМБЛ КАЗАХСТАН ДИСТРИБЬЮШН ТОО (13623)':
+                for tries in range(2):
 
-                    update_in_db(session, row, 'processing', None, None,
-                                 None, None, None, None)
+                    if row.contragent == 'ПРОКТЕР ЭНД ГЭМБЛ КАЗАХСТАН ДИСТРИБЬЮШН ТОО (13623)':
 
-                    cur_date = row.payment_date.strftime('%d.%m.%y')  # processing_date
-                    search_date = cur_date
-                    # search_date = cur_date - datetime.timedelta(days=1)  # datetime.datetime.strptime(cur_date, '%d.%m.%Y')
+                        update_in_db(session, row, 'processing', None, None,
+                                     None, None, None, None)
 
-                    cur_day_index_ = calendar[calendar['Day'] == cur_date]['Type'].index[0]
-                    cur_day_type_ = calendar[calendar['Day'] == cur_date]['Type'].iloc[0]
+                        cur_date = row.payment_date.strftime('%d.%m.%y')  # processing_date
+                        search_date = cur_date
+                        # search_date = cur_date - datetime.timedelta(days=1)  # datetime.datetime.strptime(cur_date, '%d.%m.%Y')
 
-                    if cur_day_type_ == 'Holiday':
-                        return 0
+                        cur_day_index_ = calendar[calendar['Day'] == cur_date]['Type'].index[0]
+                        cur_day_type_ = calendar[calendar['Day'] == cur_date]['Type'].iloc[0]
 
-                    for i in range(cur_day_index_ - 1, -1, -1):
-                        if calendar['Type'].iloc[i] == 'Working':
-                            search_date = calendar['Day'].iloc[i]
-                            search_date = datetime.date(int(f'20{search_date.split('.')[2]}'), int(search_date.split('.')[1]), int(search_date.split('.')[0]))
-                            break
+                        if cur_day_type_ == 'Holiday':
+                            return 0
 
-                    print('DATES TO PROC:', cur_date, search_date)
+                        for i in range(cur_day_index_ - 1, -1, -1):
+                            if calendar['Type'].iloc[i] == 'Working':
+                                search_date = calendar['Day'].iloc[i]
+                                search_date = datetime.date(int(f'20{search_date.split('.')[2]}'), int(search_date.split('.')[1]), int(search_date.split('.')[0]))
+                                break
 
-                    print('P&G!!!')
+                        print('DATES TO PROC:', cur_date, search_date)
 
-                    df = pd.read_excel(procter_path)
+                        print('P&G!!!')
 
-                    # print(df[df['Payment Date'] == search_date.strftime('%Y-%m-%d')])
+                        procter_file = None
 
-                    filtered_df = df[df['Payment Date'] == search_date.strftime('%Y-%m-%d')]
+                        for file in os.listdir(procter_path):
+                            if '.xl' in str(file):
+                                procter_file = os.path.join(procter_path, file)
+                                break
 
-                    all_invoices = []
-
-                    for ind_ in range(len(filtered_df)):
-
-                        print('NEW LINE', ind_)
-                        # print(filtered_df['Invoice Number'].iloc[i], filtered_df['Invoice Amount'].iloc[i])
-
-                        app.open('Продажа', 'Счета-фактуры выданные', 'Счет-фактура выданный')
-
-                        app.find_element({"title": "Установить интервал дат...", "class_name": "", "control_type": "Button",
-                                          "visible_only": True, "enabled_only": True, "found_index": 0}).click()
-
-                        app.parent_switch({"title": "Настройка периода", "class_name": "V8NewLocalFrameBaseWnd", "control_type": "Window",
-                                           "visible_only": True, "enabled_only": True, "found_index": 0})
-
-                        app.find_element({"title": "Интервал", "class_name": "", "control_type": "TabItem",
-                                          "visible_only": True, "enabled_only": True, "found_index": 0}).click()
-
-                        # app.find_element({"title": "Произвольный интервал", "class_name": "", "control_type": "RadioButton",
-                        #                   "visible_only": True, "enabled_only": True, "found_index": 0}).click()
-
-                        app.find_element({"title": "Без ограничения", "class_name": "", "control_type": "RadioButton",
-                                          "visible_only": True, "enabled_only": True, "found_index": 0}).click()
-
-                        app.find_element({"title": "OK", "class_name": "", "control_type": "Button",
-                                          "visible_only": True, "enabled_only": True, "found_index": 0}).click()
-
-                        app.parent_back(1)
-
-                        app.filter({'Номер': ('Равно', filtered_df['Invoice Number'].iloc[ind_]), 'Контрагент': ('Равно', row.contragent)})
-
-                        if app.wait_element({"title": "1С:Предприятие", "class_name": "V8NewLocalFrameBaseWnd", "control_type": "Window",
-                                             "visible_only": True, "enabled_only": True, "found_index": 0}, timeout=1):
-                            app.parent_switch({"title": "1С:Предприятие", "class_name": "V8NewLocalFrameBaseWnd", "control_type": "Window",
-                                               "visible_only": True, "enabled_only": True, "found_index": 0})
-                            app.find_element({"title": "Нет", "class_name": "", "control_type": "Button",
-                                              "visible_only": True, "enabled_only": True, "found_index": 0}).click()
-
-                            update_in_db(session, row, 'processing', None, None,
-                                         None, None, None, None)
-
-                            # continue
-
-                        app.parent_back(1)
-
-                        invoice = str(app.find_element({"title_re": ".* Договор контрагента", "class_name": "", "control_type": "Custom",
-                                                        "visible_only": True, "enabled_only": True, "found_index": 0}).element.element_info.element.CurrentName).replace(' Договор контрагента', '')
-                        summ_ = str(app.find_element({"title_re": ".* Сумма документа", "class_name": "", "control_type": "Custom",
-                                                      "visible_only": True, "enabled_only": True, "found_index": 0}).element.element_info.element.CurrentName).replace(' Сумма документа', '')
-
-                        logger.warning(f'Found invoice: {invoice}')
-
-                        all_invoices.append({invoice: summ_})
-
-                        app.open("Окна", "Закрыть все")
-
-                        app.parent_switch(app.root)
-                        # app.quit()
-
-                    print(all_invoices)
-                    logger.warning(all_invoices)
-
-                    print('LAST STEP')
-                    if check_fill_final_step:
-
-                        # app = Odines()
-                        # app.auth()
-
-                        app.open('Банк и касса', 'Платежное поручение входящее')
-                        app.find_element({"title": "Установить интервал дат...", "class_name": "", "control_type": "Button",
-                                          "visible_only": True, "enabled_only": True, "found_index": 0}).click()
-
-                        app.parent_switch({"title": "Настройка периода", "class_name": "V8NewLocalFrameBaseWnd", "control_type": "Window",
-                                           "visible_only": True, "enabled_only": True, "found_index": 0})
-
-                        app.find_element({"title": "Период", "class_name": "", "control_type": "TabItem",
-                                          "visible_only": True, "enabled_only": True, "found_index": 0}).click()
-
-                        app.find_element({"title": "День", "class_name": "", "control_type": "RadioButton",
-                                          "visible_only": True, "enabled_only": True, "found_index": 0}).click()
-
-                        app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                                          "visible_only": True, "enabled_only": True, "found_index": 0}).click()
-
-                        app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                                          "visible_only": True, "enabled_only": True, "found_index": 0}).type_keys(row.payment_date.strftime('%d.%m.%Y'))
-
-                        app.find_element({"title": "OK", "class_name": "", "control_type": "Button",
-                                          "visible_only": True, "enabled_only": True, "found_index": 0}).click()
-
-                        app.parent_back(1)
-
-                        app.find_element({"title": "Установить отбор и сортировку списка...", "class_name": "", "control_type": "Button",
-                                          "visible_only": True, "enabled_only": True, "found_index": 0}).click()
-
-                        app.parent_switch({"title": "Отбор и сортировка", "class_name": "V8NewLocalFrameBaseWnd", "control_type": "Window",
-                                           "visible_only": True, "enabled_only": True, "found_index": 0})
-
-                        app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                                          "visible_only": True, "enabled_only": True, "found_index": 3}).click()
-                        app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                                          "visible_only": True, "enabled_only": True, "found_index": 3}).type_keys(row.payment_id)
-
-                        app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                                          "visible_only": True, "enabled_only": True, "found_index": 7}).click()
-                        app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                                          "visible_only": True, "enabled_only": True, "found_index": 7}).type_keys('KZT')
-
-                        app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                                          "visible_only": True, "enabled_only": True, "found_index": 9}).click()
-                        app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                                          "visible_only": True, "enabled_only": True, "found_index": 9}).type_keys('Оплата от покупателя')
-
-                        app.find_element({"title": "OK", "class_name": "", "control_type": "Button",
-                                          "visible_only": True, "enabled_only": True, "found_index": 0}).click()
-
-                        app.parent_back(1)
-
-                        app.find_element({"title_re": ".* Номер", "class_name": "", "control_type": "Custom",
-                                          "visible_only": True, "enabled_only": True, "found_index": 0}).click()
-                        app.find_element({"title_re": ".* Номер", "class_name": "", "control_type": "Custom",
-                                          "visible_only": True, "enabled_only": True, "found_index": 0}).type_keys(app.keys.ENTER)
-
-                        app.parent_switch({"title": "", "class_name": "", "control_type": "Pane",
-                                           "visible_only": True, "enabled_only": True, "found_index": 34})
-
-                        cancel_check = {"title": "Отмена проведения", "class_name": "", "control_type": "Button",
-                                        "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}
-
-                        if app.wait_element(cancel_check, timeout=5):
-                            app.find_element(cancel_check).click()
-
-                            app.find_element({"title": "Записать", "class_name": "", "control_type": "Button",
-                                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
-
-                        if len(all_invoices) > 1:
-                            app.find_element({"title": "Список", "class_name": "", "control_type": "Button",
-                                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
-
-                            dds_statement = 'Крат.деб. задолж-ть покупат-ей за услуги в тенге'
-                            pnl = 'Поступления от маркетинговой деятельности'
-                            bill_calculations = 1210
-                            bill_advances = 3510
-
-                            for ind__, invoice in enumerate(all_invoices):
-
-                                for key_, val_ in invoice.items():
-
-                                    if ind__ == 0:
-                                        print('Kekus')
-                                        invoice_contragent = app.find_element({"title_re": ".* Договор контрагента", "class_name": "", "control_type": "Custom",
-                                                                               "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}, timeout=120)
-                                        invoice_contragent.click(double=True)
-                                        invoice_contragent.type_keys(key_, protect_first=True)
-                                        invoice_contragent.type_keys(app.keys.TAB)
-
-                                        app.find_element({"title_re": ".*Сумма платежа", "class_name": "", "control_type": "Edit",
-                                                          "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}, timeout=130).type_keys(val_, app.keys.TAB)
-
-                                    else:
-                                        app.find_element({"title": "Добавить", "class_name": "", "control_type": "Button",
-                                                          "visible_only": True, "enabled_only": True, "found_index": 1, "parent": app.root}).click()
-
-                                        app.find_element({"title": "Договор контрагента", "class_name": "", "control_type": "Edit",
-                                                          "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
-                                        app.find_element({"title": "Договор контрагента", "class_name": "", "control_type": "Edit",
-                                                          "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).type_keys(key_, protect_first=True)
-                                        app.find_element({"title": "Договор контрагента", "class_name": "", "control_type": "Edit",
-                                                          "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).type_keys(app.keys.TAB)
-
-                                        app.find_element({"title": "Сумма платежа", "class_name": "", "control_type": "Edit",
-                                                          "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
-                                        app.find_element({"title": "Сумма платежа", "class_name": "", "control_type": "Edit",
-                                                          "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).type_keys(val_, app.keys.TAB)
-                                        print()
-                                        app.find_element({"title": " Ставка НДС", "class_name": "", "control_type": "Custom",
-                                                          "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
-                                        app.find_element({"title": " Ставка НДС", "class_name": "", "control_type": "Custom",
-                                                          "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).type_keys('12%', protect_first=True)
-                                        app.find_element({"title": " Ставка НДС", "class_name": "", "control_type": "Custom",
-                                                          "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).type_keys(app.keys.TAB * 2)
-
-                                    app.find_element({"title": " Статья ДДС", "class_name": "", "control_type": "Custom",
-                                                      "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
-                                    app.find_element({"title": " Статья ДДС", "class_name": "", "control_type": "Custom",
-                                                      "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).type_keys(dds_statement)
-
-                                    app.find_element({"title": " Доход расход", "class_name": "", "control_type": "Custom",
-                                                      "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
-                                    app.find_element({"title": " Доход расход", "class_name": "", "control_type": "Custom",
-                                                      "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).type_keys(pnl)
-
-                                    app.find_element({"title": " Филиал", "class_name": "", "control_type": "Custom",
-                                                      "visible_only": True, "enabled_only": True, "found_index": 1, "parent": app.root}).click()
-                                    app.find_element({"title": " Филиал", "class_name": "", "control_type": "Custom",
-                                                      "visible_only": True, "enabled_only": True, "found_index": 1, "parent": app.root}).type_keys('ТОО "Magnum Cash', app.keys.TAB)
-
-                            print()
-
-                            app.find_element({"title": "Провести", "class_name": "", "control_type": "Button",
-                                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
-
-                            app.find_element({"title": "ОК", "class_name": "", "control_type": "Button",
-                                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
-
-                        else:
-
-                            app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                                              "visible_only": True, "enabled_only": True, "found_index": 15, "parent": app.root}).click()
-                            app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                                              "visible_only": True, "enabled_only": True, "found_index": 15, "parent": app.root}
-                                             ).type_keys(app.keys.RIGHT * 50, app.keys.BACKSPACE * 100)
-                            app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                                              "visible_only": True, "enabled_only": True, "found_index": 15, "parent": app.root}
-                                             ).type_keys('Крат.деб. задолж-ть покупат-ей за услуги в тенге (поступление) 012', protect_first=True)
-                            app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                                              "visible_only": True, "enabled_only": True, "found_index": 15, "parent": app.root}
-                                             ).type_keys(app.keys.TAB)
-
-                            sleep(1)
-
-                            app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                                              "visible_only": True, "enabled_only": True, "found_index": 18, "parent": app.root}).click()
-                            app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                                              "visible_only": True, "enabled_only": True, "found_index": 18, "parent": app.root}
-                                             ).type_keys(app.keys.RIGHT * 50, app.keys.BACKSPACE * 100, 'Поступления от маркетинговой деятельности', app.keys.TAB)
-
-                            sleep(1)
-
-                            app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                                              "visible_only": True, "enabled_only": True, "found_index": 16, "parent": app.root}).click()
-                            app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                                              "visible_only": True, "enabled_only": True, "found_index": 16, "parent": app.root}
-                                             ).type_keys(app.keys.RIGHT * 50, app.keys.BACKSPACE * 100, '1210', app.keys.TAB)
-
-                            sleep(1)
-
-                            app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                                              "visible_only": True, "enabled_only": True, "found_index": 17, "parent": app.root}).click()
-                            app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                                              "visible_only": True, "enabled_only": True, "found_index": 17, "parent": app.root}
-                                             ).type_keys(app.keys.RIGHT * 50, app.keys.BACKSPACE * 100, '3510', app.keys.TAB)
-
-                            sleep(1)
-
-                            for invoice_id in all_invoices[0].keys():
-
-                                app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                                                  "visible_only": True, "enabled_only": True, "found_index": 12, "parent": app.root}).click()
-                                app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                                                  "visible_only": True, "enabled_only": True, "found_index": 12, "parent": app.root}
-                                                 ).type_keys(app.keys.RIGHT * 50, app.keys.BACKSPACE * 100)
-                                app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                                                  "visible_only": True, "enabled_only": True, "found_index": 12, "parent": app.root}
-                                                 ).type_keys(invoice_id, protect_first=True)
-                                app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                                                  "visible_only": True, "enabled_only": True, "found_index": 12, "parent": app.root}
-                                                 ).type_keys(app.keys.TAB)
-
-                                if app.wait_element({"class_name": "", "control_type": "ListItem",
-                                                     "visible_only": True, "enabled_only": True, "parent": app.root}, timeout=1):
-                                    els = app.find_elements({"class_name": "", "control_type": "ListItem", "visible_only": True, "enabled_only": True, "parent": app.root}, timeout=10)
-
-                                    print('LIST DROPPED DOWN')
-
-                                    for el in els:
-                                        el.click()
-
-                                        break
-
-                            with suppress(Exception):
-
-                                app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                                                  "visible_only": True, "enabled_only": True, "found_index": 19, "parent": app.root}).click()
-                                app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                                                  "visible_only": True, "enabled_only": True, "found_index": 19, "parent": app.root}
-                                                 ).type_keys(app.keys.RIGHT * 50, app.keys.BACKSPACE * 100, 'ТОО "Magnum Cash', app.keys.TAB)
-                            print()
-                            app.find_element({"title": "ОК", "class_name": "", "control_type": "Button",
-                                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
-                            update_in_db(session, row, 'success', row.branch, None,
-                                         None, None, None, None)
-                            print()
-
-                else:
-
-                    cur_date = row.payment_date  # processing_date
-                    search_date = cur_date - datetime.timedelta(days=1)  # datetime.datetime.strptime(cur_date, '%d.%m.%Y')
-
-                    print(cur_date, search_date)
-
-                    if 2.7 <= (datetime.datetime.now() - row.payment_date).total_seconds() / 86400:
-                        app = Odines()
-                        app.auth()
-                        kimberly_file = None
-
-                        for file in os.listdir(kimberly_path):
-                            if row.payment_date.strftime('%d.%m.%Y') in file:
-                                kimberly_file = os.path.join(kimberly_path, file)
-
-                        print('FOUND EXCEL', kimberly_file)
-
-                        if kimberly_file is None:
+                        if procter_file is None:
+                            smtp_send('Добрый день!\nФайл для Проктер Энд Гэмбл не загружен. Робот будет ждать 15 минут', subject='Разноска Входящих Платежей', to=to_whom, url='172.16.10.5', username='rpa.robot@magnum.kz')
+                            sleep(900)
                             continue
 
-                        df = pd.read_excel(kimberly_file)
+                        df = pd.read_excel(procter_file)
+
+                        # print(df[df['Payment Date'] == search_date.strftime('%Y-%m-%d')])
+
+                        filtered_df = df[df['Payment Date'] == search_date.strftime('%Y-%m-%d')]
 
                         all_invoices = []
 
-                        for index in range(len(df)):
+                        for ind_ in range(len(filtered_df)):
 
-                            app.parent_switch(app.root)
+                            print('NEW LINE', ind_)
+                            # print(filtered_df['Invoice Number'].iloc[i], filtered_df['Invoice Amount'].iloc[i])
 
-                            app.open('Продажа', 'Счета-фактуры выданные', 'Счет-фактура выданный', maximize_inner=True)
+                            app.open('Продажа', 'Счета-фактуры выданные', 'Счет-фактура выданный')
 
-                            parent_ = app.parent
+                            app.find_element({"title": "Установить интервал дат...", "class_name": "", "control_type": "Button",
+                                              "visible_only": True, "enabled_only": True, "found_index": 0}).click()
 
-                            app.filter({'Номер': ('Равно', df['Ссылка'].iloc[index]), 'Контрагент': ('Равно', row.contragent), 'Сумма документа': ('Равно', 0 - df['Сумма в валюте документа'].iloc[index])})
+                            app.parent_switch({"title": "Настройка периода", "class_name": "V8NewLocalFrameBaseWnd", "control_type": "Window",
+                                               "visible_only": True, "enabled_only": True, "found_index": 0})
 
-                            logger.warning(f'Checkpoint8 | {datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")}')
+                            app.find_element({"title": "Интервал", "class_name": "", "control_type": "TabItem",
+                                              "visible_only": True, "enabled_only": True, "found_index": 0}).click()
+
+                            # app.find_element({"title": "Произвольный интервал", "class_name": "", "control_type": "RadioButton",
+                            #                   "visible_only": True, "enabled_only": True, "found_index": 0}).click()
+
+                            app.find_element({"title": "Без ограничения", "class_name": "", "control_type": "RadioButton",
+                                              "visible_only": True, "enabled_only": True, "found_index": 0}).click()
+
+                            app.find_element({"title": "OK", "class_name": "", "control_type": "Button",
+                                              "visible_only": True, "enabled_only": True, "found_index": 0}).click()
+
+                            app.parent_back(1)
+
+                            app.filter({'Номер': ('Равно', filtered_df['Invoice Number'].iloc[ind_]), 'Контрагент': ('Равно', row.contragent)})
 
                             if app.wait_element({"title": "1С:Предприятие", "class_name": "V8NewLocalFrameBaseWnd", "control_type": "Window",
                                                  "visible_only": True, "enabled_only": True, "found_index": 0}, timeout=1):
@@ -2180,43 +1872,34 @@ def performer(processing_date, processing_date_short, half_year_back_date):
                                                   "visible_only": True, "enabled_only": True, "found_index": 0}).click()
 
                                 update_in_db(session, row, 'processing', None, None,
-                                             None, None, False, None)
+                                             None, None, None, None)
 
                                 # continue
 
-                            # app.parent_switch(parent_, maximize=True)
-
-                            if app.wait_element({"title": "Развернуть", "class_name": "", "control_type": "Button",
-                                                 "visible_only": True, "enabled_only": True, "found_index": 0}, timeout=1):
-                                app.find_element({"title": "Развернуть", "class_name": "", "control_type": "Button",
-                                                  "visible_only": True, "enabled_only": True, "found_index": 0}).click()
-
-                            app.find_element({"title_re": ".* Контрагент", "class_name": "", "control_type": "Custom",
-                                              "visible_only": True, "enabled_only": True, "found_index": 0}).click(double=True)
-
-                            invoice = str(app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                                                            "visible_only": True, "enabled_only": True, "found_index": 3}).element.iface_value.CurrentValue)
-
-                            app.find_element({"title": "Закрыть", "class_name": "", "control_type": "Button",
-                                              "visible_only": True, "enabled_only": True, "found_index": 3}).click()
-
-                            all_invoices.append({invoice: df['Сумма в валюте документа'].iloc[index]})
-
                             app.parent_back(1)
+
+                            invoice = str(app.find_element({"title_re": ".* Договор контрагента", "class_name": "", "control_type": "Custom",
+                                                            "visible_only": True, "enabled_only": True, "found_index": 0}).element.element_info.element.CurrentName).replace(' Договор контрагента', '')
+                            summ_ = str(app.find_element({"title_re": ".* Сумма документа", "class_name": "", "control_type": "Custom",
+                                                          "visible_only": True, "enabled_only": True, "found_index": 0}).element.element_info.element.CurrentName).replace(' Сумма документа', '')
+
+                            logger.warning(f'Found invoice: {invoice}')
+
+                            all_invoices.append({invoice: summ_})
 
                             app.open("Окна", "Закрыть все")
 
-                        # all_invoices = [{'ДС№1 к ДС АБ-13(04951-2016)F19 от 01 апрель 2023г': -3511800}, {'М/С-23/604169 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -459510}, {'М/С-23/605796 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -8946363}, {'М/С-23/608751 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -98976}, {'М/С-23/609514 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -14687156}, {'М/С-23/609683 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -168412}, {'М/С-23/610662 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -30671}, {'М/С-23/611527 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -16374}, {'М/С-23/612732 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -17552270}, {'М/С-23/603303 к ДМУ-12(04951-2016)-КИМБЕРЛИ': -28121895}, {'М/С-23/612583 к ДМУ-12(04951-2016)-КИМБЕРЛИ': -40084026}, {'М/С-23/612592 к ДМУ-12(04951-2016)-КИМБЕРЛИ': -86970371}, {'М/С-23/612596 к ДМУ-12(04951-2016)-КИМБЕРЛИ': -106764157}, {'М/С-23/613838 к ДМУ-12(04951-2016)-КИМБЕРЛИ': -32458138}, {'М/С-23/615780 к ДМУ-12(04951-2016)-КИМБЕРЛИ': -34940864}, {'М/С-23/616090 к ДМУ-12(04951-2016)-КИМБЕРЛИ': -32073467}, {'М/С-23/619560 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -1000000}, {'М/С-23/566254 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -10000000}, {'М/С-23/568650 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -1260000}, {'М/С-23/568783 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -135000}, {'М/С-23/568786 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -1440000}, {'М/С-23/615926 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -36658}, {'М/С-23/619567 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -16000000}, {'М/С-9/565880 к ДМУ-12(04951-2016)-КИМБЕРЛИ': -2520000}, {'ДС №3 от 01.11.2023г к ДС АБ-13(04951-2016)-F19 от 01.07.2023г.': -349096}]
+                            app.parent_switch(app.root)
+                            # app.quit()
 
                         print(all_invoices)
+                        logger.warning(all_invoices)
 
+                        print('LAST STEP')
                         if check_fill_final_step:
-                            app.parent_switch(app.root)
 
                             # app = Odines()
                             # app.auth()
-
-                            app.parent_switch(app.root)
 
                             app.open('Банк и касса', 'Платежное поручение входящее')
                             app.find_element({"title": "Установить интервал дат...", "class_name": "", "control_type": "Button",
@@ -2242,99 +1925,412 @@ def performer(processing_date, processing_date_short, half_year_back_date):
 
                             app.parent_back(1)
 
-                            app.filter({'Номер': ('Равно', row.payment_id), 'Валюта документа': ('Равно', 'KZT'), 'Вид операции': ('Равно', 'Оплата от покупателя')})
+                            app.find_element({"title": "Установить отбор и сортировку списка...", "class_name": "", "control_type": "Button",
+                                              "visible_only": True, "enabled_only": True, "found_index": 0}).click()
+
+                            app.parent_switch({"title": "Отбор и сортировка", "class_name": "V8NewLocalFrameBaseWnd", "control_type": "Window",
+                                               "visible_only": True, "enabled_only": True, "found_index": 0})
+
+                            app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                              "visible_only": True, "enabled_only": True, "found_index": 3}).click()
+                            app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                              "visible_only": True, "enabled_only": True, "found_index": 3}).type_keys(row.payment_id)
+
+                            app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                              "visible_only": True, "enabled_only": True, "found_index": 7}).click()
+                            app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                              "visible_only": True, "enabled_only": True, "found_index": 7}).type_keys('KZT')
+
+                            app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                              "visible_only": True, "enabled_only": True, "found_index": 9}).click()
+                            app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                              "visible_only": True, "enabled_only": True, "found_index": 9}).type_keys('Оплата от покупателя')
+
+                            app.find_element({"title": "OK", "class_name": "", "control_type": "Button",
+                                              "visible_only": True, "enabled_only": True, "found_index": 0}).click()
 
                             app.parent_back(1)
 
                             app.find_element({"title_re": ".* Номер", "class_name": "", "control_type": "Custom",
-                                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
+                                              "visible_only": True, "enabled_only": True, "found_index": 0}).click()
                             app.find_element({"title_re": ".* Номер", "class_name": "", "control_type": "Custom",
-                                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).type_keys(app.keys.ENTER)
+                                              "visible_only": True, "enabled_only": True, "found_index": 0}).type_keys(app.keys.ENTER)
 
                             app.parent_switch({"title": "", "class_name": "", "control_type": "Pane",
                                                "visible_only": True, "enabled_only": True, "found_index": 34})
 
-                            app.find_element({"title": "Список", "class_name": "", "control_type": "Button",
-                                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
+                            cancel_check = {"title": "Отмена проведения", "class_name": "", "control_type": "Button",
+                                            "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}
 
-                            comment = str(app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                                                            "visible_only": True, "enabled_only": True, "found_index": 2, "parent": app.root}).element.iface_value.CurrentValue)
+                            if app.wait_element(cancel_check, timeout=5):
+                                app.find_element(cancel_check).click()
 
-                            # for _ in range(100):
-                            #     try:
-                            #         app.find_element({"title": "Удалить", "class_name": "", "control_type": "Button",
-                            #                           "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}, timeout=5).click()
-                            #     except:
-                            #         break
+                                app.find_element({"title": "Записать", "class_name": "", "control_type": "Button",
+                                                  "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
 
-                            dds_statement = 'Крат.деб. задолж-ть покупат-ей за услуги в тенге'
-                            pnl = 'Поступления от маркетинговой деятельности'
-                            bill_calculations = 1210
-                            bill_advances = 3510
+                            if len(all_invoices) > 1:
+                                app.find_element({"title": "Список", "class_name": "", "control_type": "Button",
+                                                  "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
 
-                            for ind__, invoice in enumerate(all_invoices):
+                                dds_statement = 'Крат.деб. задолж-ть покупат-ей за услуги в тенге'
+                                pnl = 'Поступления от маркетинговой деятельности'
+                                bill_calculations = 1210
+                                bill_advances = 3510
 
-                                for key_, val_ in invoice.items():
+                                for ind__, invoice in enumerate(all_invoices):
 
-                                    if ind__ == 0:
-                                        print('Kekus')
-                                        invoice_contragent = app.find_element({"title_re": ".* Договор контрагента", "class_name": "", "control_type": "Custom",
-                                                                               "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}, timeout=120)
-                                        invoice_contragent.click(double=True)
-                                        invoice_contragent.type_keys(key_, protect_first=True)
-                                        invoice_contragent.type_keys(app.keys.TAB)
+                                    for key_, val_ in invoice.items():
 
-                                        app.find_element({"title_re": ".*Сумма платежа", "class_name": "", "control_type": "Edit",
-                                                          "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}, timeout=130).type_keys(val_, app.keys.TAB)
+                                        if ind__ == 0:
+                                            print('Kekus')
+                                            invoice_contragent = app.find_element({"title_re": ".* Договор контрагента", "class_name": "", "control_type": "Custom",
+                                                                                   "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}, timeout=120)
+                                            invoice_contragent.click(double=True)
+                                            invoice_contragent.type_keys(key_, protect_first=True)
+                                            invoice_contragent.type_keys(app.keys.TAB)
 
-                                    else:
-                                        app.find_element({"title": "Добавить", "class_name": "", "control_type": "Button",
-                                                          "visible_only": True, "enabled_only": True, "found_index": 2, "parent": app.root}).click()
+                                            app.find_element({"title_re": ".*Сумма платежа", "class_name": "", "control_type": "Edit",
+                                                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}, timeout=130).type_keys(val_, app.keys.TAB)
 
-                                        app.find_element({"title": "Договор контрагента", "class_name": "", "control_type": "Edit",
+                                        else:
+                                            app.find_element({"title": "Добавить", "class_name": "", "control_type": "Button",
+                                                              "visible_only": True, "enabled_only": True, "found_index": 1, "parent": app.root}).click()
+
+                                            app.find_element({"title": "Договор контрагента", "class_name": "", "control_type": "Edit",
+                                                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
+                                            app.find_element({"title": "Договор контрагента", "class_name": "", "control_type": "Edit",
+                                                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).type_keys(key_, protect_first=True)
+                                            app.find_element({"title": "Договор контрагента", "class_name": "", "control_type": "Edit",
+                                                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).type_keys(app.keys.TAB)
+
+                                            app.find_element({"title": "Сумма платежа", "class_name": "", "control_type": "Edit",
+                                                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
+                                            app.find_element({"title": "Сумма платежа", "class_name": "", "control_type": "Edit",
+                                                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).type_keys(val_, app.keys.TAB)
+                                            print()
+                                            app.find_element({"title": " Ставка НДС", "class_name": "", "control_type": "Custom",
+                                                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
+                                            app.find_element({"title": " Ставка НДС", "class_name": "", "control_type": "Custom",
+                                                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).type_keys(nds, protect_first=True)
+                                            app.find_element({"title": " Ставка НДС", "class_name": "", "control_type": "Custom",
+                                                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).type_keys(app.keys.TAB * 2)
+
+                                        app.find_element({"title": " Статья ДДС", "class_name": "", "control_type": "Custom",
                                                           "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
-                                        app.find_element({"title": "Договор контрагента", "class_name": "", "control_type": "Edit",
-                                                          "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).type_keys(key_, protect_first=True)
-                                        app.find_element({"title": "Договор контрагента", "class_name": "", "control_type": "Edit",
-                                                          "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).type_keys(app.keys.TAB)
+                                        app.find_element({"title": " Статья ДДС", "class_name": "", "control_type": "Custom",
+                                                          "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).type_keys(dds_statement)
 
-                                        app.find_element({"title": "Сумма платежа", "class_name": "", "control_type": "Edit",
+                                        app.find_element({"title": " Доход расход", "class_name": "", "control_type": "Custom",
                                                           "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
-                                        app.find_element({"title": "Сумма платежа", "class_name": "", "control_type": "Edit",
-                                                          "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).type_keys(val_, app.keys.TAB)
+                                        app.find_element({"title": " Доход расход", "class_name": "", "control_type": "Custom",
+                                                          "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).type_keys(pnl)
 
-                                    app.find_element({"title": " Статья ДДС", "class_name": "", "control_type": "Custom",
-                                                      "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
-                                    app.find_element({"title": " Статья ДДС", "class_name": "", "control_type": "Custom",
-                                                      "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).type_keys(dds_statement)
+                                        app.find_element({"title": " Филиал", "class_name": "", "control_type": "Custom",
+                                                          "visible_only": True, "enabled_only": True, "found_index": 1, "parent": app.root}).click()
+                                        app.find_element({"title": " Филиал", "class_name": "", "control_type": "Custom",
+                                                          "visible_only": True, "enabled_only": True, "found_index": 1, "parent": app.root}).type_keys('ТОО "Magnum Cash', app.keys.TAB)
 
-                                    app.find_element({"title": " Доход расход", "class_name": "", "control_type": "Custom",
-                                                      "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
-                                    app.find_element({"title": " Доход расход", "class_name": "", "control_type": "Custom",
-                                                      "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).type_keys(pnl)
+                                print()
 
-                                    # app.find_element({"title": " Счет расчетов", "class_name": "", "control_type": "Custom",
-                                    #                   "visible_only": True, "enabled_only": True, "found_index": ind__ + 1, "parent": app.root}).click()
-                                    # app.find_element({"title": " Счет расчетов", "class_name": "", "control_type": "Custom",
-                                    #                   "visible_only": True, "enabled_only": True, "found_index": ind__ + 1, "parent": app.root}).type_keys(bill_calculations)
-                                    #
-                                    # app.find_element({"title": " Счет авансов", "class_name": "", "control_type": "Custom",
-                                    #                   "visible_only": True, "enabled_only": True, "found_index": ind__ + 1, "parent": app.root}).click()
-                                    # app.find_element({"title": " Счет авансов", "class_name": "", "control_type": "Custom",
-                                    #                   "visible_only": True, "enabled_only": True, "found_index": ind__ + 1, "parent": app.root}).type_keys(bill_advances)
+                                app.find_element({"title": "Провести", "class_name": "", "control_type": "Button",
+                                                  "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
 
-                                    app.find_element({"title": " Филиал", "class_name": "", "control_type": "Custom",
-                                                      "visible_only": True, "enabled_only": True, "found_index": 1, "parent": app.root}).click()
-                                    app.find_element({"title": " Филиал", "class_name": "", "control_type": "Custom",
-                                                      "visible_only": True, "enabled_only": True, "found_index": 1, "parent": app.root}).type_keys('ТОО "Magnum Cash', app.keys.TAB)
+                                app.find_element({"title": "ОК", "class_name": "", "control_type": "Button",
+                                                  "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
 
-                            print()
+                            else:
 
-                            app.find_element({"title": "Провести", "class_name": "", "control_type": "Button",
-                                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
+                                app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                                  "visible_only": True, "enabled_only": True, "found_index": 15, "parent": app.root}).click()
+                                app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                                  "visible_only": True, "enabled_only": True, "found_index": 15, "parent": app.root}
+                                                 ).type_keys(app.keys.RIGHT * 50, app.keys.BACKSPACE * 100)
+                                app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                                  "visible_only": True, "enabled_only": True, "found_index": 15, "parent": app.root}
+                                                 ).type_keys('Крат.деб. задолж-ть покупат-ей за услуги в тенге (поступление) 012', protect_first=True)
+                                app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                                  "visible_only": True, "enabled_only": True, "found_index": 15, "parent": app.root}
+                                                 ).type_keys(app.keys.TAB)
 
-                            app.find_element({"title": "ОК", "class_name": "", "control_type": "Button",
-                                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
+                                sleep(1)
+
+                                app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                                  "visible_only": True, "enabled_only": True, "found_index": 18, "parent": app.root}).click()
+                                app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                                  "visible_only": True, "enabled_only": True, "found_index": 18, "parent": app.root}
+                                                 ).type_keys(app.keys.RIGHT * 50, app.keys.BACKSPACE * 100, 'Поступления от маркетинговой деятельности', app.keys.TAB)
+
+                                sleep(1)
+
+                                app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                                  "visible_only": True, "enabled_only": True, "found_index": 16, "parent": app.root}).click()
+                                app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                                  "visible_only": True, "enabled_only": True, "found_index": 16, "parent": app.root}
+                                                 ).type_keys(app.keys.RIGHT * 50, app.keys.BACKSPACE * 100, '1210', app.keys.TAB)
+
+                                sleep(1)
+
+                                app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                                  "visible_only": True, "enabled_only": True, "found_index": 17, "parent": app.root}).click()
+                                app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                                  "visible_only": True, "enabled_only": True, "found_index": 17, "parent": app.root}
+                                                 ).type_keys(app.keys.RIGHT * 50, app.keys.BACKSPACE * 100, '3510', app.keys.TAB)
+
+                                sleep(1)
+
+                                for invoice_id in all_invoices[0].keys():
+
+                                    app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                                      "visible_only": True, "enabled_only": True, "found_index": 12, "parent": app.root}).click()
+                                    app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                                      "visible_only": True, "enabled_only": True, "found_index": 12, "parent": app.root}
+                                                     ).type_keys(app.keys.RIGHT * 50, app.keys.BACKSPACE * 100)
+                                    app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                                      "visible_only": True, "enabled_only": True, "found_index": 12, "parent": app.root}
+                                                     ).type_keys(invoice_id, protect_first=True)
+                                    app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                                      "visible_only": True, "enabled_only": True, "found_index": 12, "parent": app.root}
+                                                     ).type_keys(app.keys.TAB)
+
+                                    if app.wait_element({"class_name": "", "control_type": "ListItem",
+                                                         "visible_only": True, "enabled_only": True, "parent": app.root}, timeout=1):
+                                        els = app.find_elements({"class_name": "", "control_type": "ListItem", "visible_only": True, "enabled_only": True, "parent": app.root}, timeout=10)
+
+                                        print('LIST DROPPED DOWN')
+
+                                        for el in els:
+                                            el.click()
+
+                                            break
+
+                                with suppress(Exception):
+
+                                    app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                                      "visible_only": True, "enabled_only": True, "found_index": 19, "parent": app.root}).click()
+                                    app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                                      "visible_only": True, "enabled_only": True, "found_index": 19, "parent": app.root}
+                                                     ).type_keys(app.keys.RIGHT * 50, app.keys.BACKSPACE * 100, 'ТОО "Magnum Cash', app.keys.TAB)
+                                print()
+                                app.find_element({"title": "ОК", "class_name": "", "control_type": "Button",
+                                                  "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
+                                update_in_db(session, row, 'success', row.branch, None,
+                                             None, None, None, None)
+                                print()
+
+                        break
+
+                    else:
+
+                        cur_date = row.payment_date  # processing_date
+                        search_date = cur_date - datetime.timedelta(days=1)  # datetime.datetime.strptime(cur_date, '%d.%m.%Y')
+
+                        print(cur_date, search_date)
+
+                        if 2.7 <= (datetime.datetime.now() - row.payment_date).total_seconds() / 86400:
+                            app = Odines()
+                            app.auth()
+                            kimberly_file = None
+
+                            for file in os.listdir(kimberly_path):               # Проверка на всякий случай
+                                if row.payment_date.strftime('%d.%m.%Y') in file or '.xl' in file:
+                                    kimberly_file = os.path.join(kimberly_path, file)
+
+                            print('FOUND EXCEL', kimberly_file)
+
+                            if kimberly_file is None:
+                                smtp_send('Добрый день!\nФайл для Кимберли Кларк не загружен. Робот будет ждать 15 минут', subject='Разноска Входящих Платежей', to=to_whom, url='172.16.10.5', username='rpa.robot@magnum.kz')
+                                sleep(900)
+                                continue
+
+                            df = pd.read_excel(kimberly_file)
+
+                            all_invoices = []
+
+                            for index in range(len(df)):
+
+                                app.parent_switch(app.root)
+
+                                app.open('Продажа', 'Счета-фактуры выданные', 'Счет-фактура выданный', maximize_inner=True)
+
+                                parent_ = app.parent
+
+                                app.filter({'Номер': ('Равно', df['Ссылка'].iloc[index]), 'Контрагент': ('Равно', row.contragent), 'Сумма документа': ('Равно', 0 - df['Сумма в валюте документа'].iloc[index])})
+
+                                logger.warning(f'Checkpoint8 | {datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")}')
+
+                                if app.wait_element({"title": "1С:Предприятие", "class_name": "V8NewLocalFrameBaseWnd", "control_type": "Window",
+                                                     "visible_only": True, "enabled_only": True, "found_index": 0}, timeout=1):
+                                    app.parent_switch({"title": "1С:Предприятие", "class_name": "V8NewLocalFrameBaseWnd", "control_type": "Window",
+                                                       "visible_only": True, "enabled_only": True, "found_index": 0})
+                                    app.find_element({"title": "Нет", "class_name": "", "control_type": "Button",
+                                                      "visible_only": True, "enabled_only": True, "found_index": 0}).click()
+
+                                    update_in_db(session, row, 'processing', None, None,
+                                                 None, None, False, None)
+
+                                    # continue
+
+                                # app.parent_switch(parent_, maximize=True)
+
+                                if app.wait_element({"title": "Развернуть", "class_name": "", "control_type": "Button",
+                                                     "visible_only": True, "enabled_only": True, "found_index": 0}, timeout=1):
+                                    app.find_element({"title": "Развернуть", "class_name": "", "control_type": "Button",
+                                                      "visible_only": True, "enabled_only": True, "found_index": 0}).click()
+
+                                app.find_element({"title_re": ".* Контрагент", "class_name": "", "control_type": "Custom",
+                                                  "visible_only": True, "enabled_only": True, "found_index": 0}).click(double=True)
+
+                                invoice = str(app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                                                "visible_only": True, "enabled_only": True, "found_index": 3}).element.iface_value.CurrentValue)
+
+                                app.find_element({"title": "Закрыть", "class_name": "", "control_type": "Button",
+                                                  "visible_only": True, "enabled_only": True, "found_index": 3}).click()
+
+                                all_invoices.append({invoice: df['Сумма в валюте документа'].iloc[index]})
+
+                                app.parent_back(1)
+
+                                app.open("Окна", "Закрыть все")
+
+                            # all_invoices = [{'ДС№1 к ДС АБ-13(04951-2016)F19 от 01 апрель 2023г': -3511800}, {'М/С-23/604169 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -459510}, {'М/С-23/605796 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -8946363}, {'М/С-23/608751 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -98976}, {'М/С-23/609514 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -14687156}, {'М/С-23/609683 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -168412}, {'М/С-23/610662 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -30671}, {'М/С-23/611527 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -16374}, {'М/С-23/612732 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -17552270}, {'М/С-23/603303 к ДМУ-12(04951-2016)-КИМБЕРЛИ': -28121895}, {'М/С-23/612583 к ДМУ-12(04951-2016)-КИМБЕРЛИ': -40084026}, {'М/С-23/612592 к ДМУ-12(04951-2016)-КИМБЕРЛИ': -86970371}, {'М/С-23/612596 к ДМУ-12(04951-2016)-КИМБЕРЛИ': -106764157}, {'М/С-23/613838 к ДМУ-12(04951-2016)-КИМБЕРЛИ': -32458138}, {'М/С-23/615780 к ДМУ-12(04951-2016)-КИМБЕРЛИ': -34940864}, {'М/С-23/616090 к ДМУ-12(04951-2016)-КИМБЕРЛИ': -32073467}, {'М/С-23/619560 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -1000000}, {'М/С-23/566254 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -10000000}, {'М/С-23/568650 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -1260000}, {'М/С-23/568783 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -135000}, {'М/С-23/568786 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -1440000}, {'М/С-23/615926 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -36658}, {'М/С-23/619567 к ДС АБ-13(04951-2016)-КИМБЕРЛИ': -16000000}, {'М/С-9/565880 к ДМУ-12(04951-2016)-КИМБЕРЛИ': -2520000}, {'ДС №3 от 01.11.2023г к ДС АБ-13(04951-2016)-F19 от 01.07.2023г.': -349096}]
+
+                            print(all_invoices)
+
+                            if check_fill_final_step:
+                                app.parent_switch(app.root)
+
+                                # app = Odines()
+                                # app.auth()
+
+                                app.parent_switch(app.root)
+
+                                app.open('Банк и касса', 'Платежное поручение входящее')
+                                app.find_element({"title": "Установить интервал дат...", "class_name": "", "control_type": "Button",
+                                                  "visible_only": True, "enabled_only": True, "found_index": 0}).click()
+
+                                app.parent_switch({"title": "Настройка периода", "class_name": "V8NewLocalFrameBaseWnd", "control_type": "Window",
+                                                   "visible_only": True, "enabled_only": True, "found_index": 0})
+
+                                app.find_element({"title": "Период", "class_name": "", "control_type": "TabItem",
+                                                  "visible_only": True, "enabled_only": True, "found_index": 0}).click()
+
+                                app.find_element({"title": "День", "class_name": "", "control_type": "RadioButton",
+                                                  "visible_only": True, "enabled_only": True, "found_index": 0}).click()
+
+                                app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                                  "visible_only": True, "enabled_only": True, "found_index": 0}).click()
+
+                                app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                                  "visible_only": True, "enabled_only": True, "found_index": 0}).type_keys(row.payment_date.strftime('%d.%m.%Y'))
+
+                                app.find_element({"title": "OK", "class_name": "", "control_type": "Button",
+                                                  "visible_only": True, "enabled_only": True, "found_index": 0}).click()
+
+                                app.parent_back(1)
+
+                                app.filter({'Номер': ('Равно', row.payment_id), 'Валюта документа': ('Равно', 'KZT'), 'Вид операции': ('Равно', 'Оплата от покупателя')})
+
+                                app.parent_back(1)
+
+                                app.find_element({"title_re": ".* Номер", "class_name": "", "control_type": "Custom",
+                                                  "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
+                                app.find_element({"title_re": ".* Номер", "class_name": "", "control_type": "Custom",
+                                                  "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).type_keys(app.keys.ENTER)
+
+                                app.parent_switch({"title": "", "class_name": "", "control_type": "Pane",
+                                                   "visible_only": True, "enabled_only": True, "found_index": 34})
+
+                                app.find_element({"title": "Список", "class_name": "", "control_type": "Button",
+                                                  "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
+
+                                comment = str(app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                                                "visible_only": True, "enabled_only": True, "found_index": 2, "parent": app.root}).element.iface_value.CurrentValue)
+
+                                # for _ in range(100):
+                                #     try:
+                                #         app.find_element({"title": "Удалить", "class_name": "", "control_type": "Button",
+                                #                           "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}, timeout=5).click()
+                                #     except:
+                                #         break
+
+                                dds_statement = 'Крат.деб. задолж-ть покупат-ей за услуги в тенге'
+                                pnl = 'Поступления от маркетинговой деятельности'
+                                bill_calculations = 1210
+                                bill_advances = 3510
+
+                                for ind__, invoice in enumerate(all_invoices):
+
+                                    for key_, val_ in invoice.items():
+
+                                        if ind__ == 0:
+                                            print('Kekus')
+                                            invoice_contragent = app.find_element({"title_re": ".* Договор контрагента", "class_name": "", "control_type": "Custom",
+                                                                                   "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}, timeout=120)
+                                            invoice_contragent.click(double=True)
+                                            invoice_contragent.type_keys(key_, protect_first=True)
+                                            invoice_contragent.type_keys(app.keys.TAB)
+
+                                            app.find_element({"title_re": ".*Сумма платежа", "class_name": "", "control_type": "Edit",
+                                                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}, timeout=130).type_keys(val_, app.keys.TAB)
+
+                                        else:
+                                            app.find_element({"title": "Добавить", "class_name": "", "control_type": "Button",
+                                                              "visible_only": True, "enabled_only": True, "found_index": 2, "parent": app.root}).click()
+
+                                            app.find_element({"title": "Договор контрагента", "class_name": "", "control_type": "Edit",
+                                                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
+                                            app.find_element({"title": "Договор контрагента", "class_name": "", "control_type": "Edit",
+                                                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).type_keys(key_, protect_first=True)
+                                            app.find_element({"title": "Договор контрагента", "class_name": "", "control_type": "Edit",
+                                                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).type_keys(app.keys.TAB)
+
+                                            app.find_element({"title": "Сумма платежа", "class_name": "", "control_type": "Edit",
+                                                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
+                                            app.find_element({"title": "Сумма платежа", "class_name": "", "control_type": "Edit",
+                                                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).type_keys(val_, app.keys.TAB)
+
+                                            app.find_element({"title": " Ставка НДС", "class_name": "", "control_type": "Custom",
+                                                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
+                                            app.find_element({"title": " Ставка НДС", "class_name": "", "control_type": "Custom",
+                                                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).type_keys(nds, protect_first=True)
+                                            app.find_element({"title": " Ставка НДС", "class_name": "", "control_type": "Custom",
+                                                              "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).type_keys(app.keys.TAB * 2)
+
+                                        app.find_element({"title": " Статья ДДС", "class_name": "", "control_type": "Custom",
+                                                          "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
+                                        app.find_element({"title": " Статья ДДС", "class_name": "", "control_type": "Custom",
+                                                          "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).type_keys(dds_statement)
+
+                                        app.find_element({"title": " Доход расход", "class_name": "", "control_type": "Custom",
+                                                          "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
+                                        app.find_element({"title": " Доход расход", "class_name": "", "control_type": "Custom",
+                                                          "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).type_keys(pnl)
+
+                                        # app.find_element({"title": " Счет расчетов", "class_name": "", "control_type": "Custom",
+                                        #                   "visible_only": True, "enabled_only": True, "found_index": ind__ + 1, "parent": app.root}).click()
+                                        # app.find_element({"title": " Счет расчетов", "class_name": "", "control_type": "Custom",
+                                        #                   "visible_only": True, "enabled_only": True, "found_index": ind__ + 1, "parent": app.root}).type_keys(bill_calculations)
+                                        #
+                                        # app.find_element({"title": " Счет авансов", "class_name": "", "control_type": "Custom",
+                                        #                   "visible_only": True, "enabled_only": True, "found_index": ind__ + 1, "parent": app.root}).click()
+                                        # app.find_element({"title": " Счет авансов", "class_name": "", "control_type": "Custom",
+                                        #                   "visible_only": True, "enabled_only": True, "found_index": ind__ + 1, "parent": app.root}).type_keys(bill_advances)
+
+                                        app.find_element({"title": " Филиал", "class_name": "", "control_type": "Custom",
+                                                          "visible_only": True, "enabled_only": True, "found_index": 1, "parent": app.root}).click()
+                                        app.find_element({"title": " Филиал", "class_name": "", "control_type": "Custom",
+                                                          "visible_only": True, "enabled_only": True, "found_index": 1, "parent": app.root}).type_keys('ТОО "Magnum Cash', app.keys.TAB)
+
+                                print()
+
+                                app.find_element({"title": "Провести", "class_name": "", "control_type": "Button",
+                                                  "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
+
+                                app.find_element({"title": "ОК", "class_name": "", "control_type": "Button",
+                                                  "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
+
+                            break
+
                         # update_in_db(session, row, 'kekus', None, None,
                         #              None, None, None, None)
 
@@ -2364,6 +2360,10 @@ def main():
 
     try:
 
+        # smtp_send('Halooo', subject='Kekos', to=['Abdykarim.D@magnum.kz'], url='172.16.10.5', username='rpa.robot@magnum.kz')
+        #
+        # exit()
+
         logger.info('Process started')
         logger.warning('Process started')
 
@@ -2383,6 +2383,7 @@ def main():
         send_telegram_message(tg_token, '-4124647303', f'Started {ip_address}')
 
         for day in range(day1_, day2_):
+
             processing_date_ = datetime.date.today().strftime('%d.%m.%Y')
             processing_date_short_ = datetime.date.today().strftime('%d.%m.%y')
 

@@ -592,6 +592,15 @@ class Odines(App):
                         el.click()
                         break
 
+                if self.wait_element({"title": "Элемент помечен на удаление!\nПродолжить?", "class_name": "", "control_type": "Pane",
+                                      "visible_only": True, "enabled_only": True, "found_index": 0}, timeout=1):
+                    self.find_element({"title": "Да", "class_name": "", "control_type": "Button",
+                                       "visible_only": True, "enabled_only": True, "found_index": 0}).click()
+                    self.find_element({"title": "Отмена", "class_name": "", "control_type": "Button",
+                                       "visible_only": True, "enabled_only": True, "found_index": 0}).click()
+
+                    raise Exception('Элемент помечен на удаление')
+
         self.find_element(
             {
                 "title": "OK",

@@ -73,6 +73,10 @@ logger = init_logger(file_path=log_path, tg_token=tg_token, tg_chat_id=chat_id)
 
 production_calendar_path = config_data['production_calendar_path']
 form_document_path = config_data['form_document_path']
+procter_path = config_data['procter_path']
+kimberly_path = config_data['kimberly_path']
+to_whom = config_data['to_whom']
+nds = config_data['nds']
 
 download_path = Path.home().joinpath('downloads')
 ip_address = socket.gethostbyname(socket.gethostname())
