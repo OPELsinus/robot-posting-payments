@@ -110,8 +110,8 @@ def performer(processing_date, processing_date_short, half_year_back_date):
     Session.configure(bind=engine)
     session = Session()
 
-    get_all_payments_excel = False
-    get_all_needed_payments = False
+    get_all_payments_excel = True
+    get_all_needed_payments = True
     check_cancel_approval = True
     check_payment_to_contragent_ = True
     check_payment_tmz_realization_ = True
@@ -376,7 +376,7 @@ def performer(processing_date, processing_date_short, half_year_back_date):
         row = rows[0]
         ind += 1
 
-        # if row.contragent != 'Inter group kz ТОО':
+        # if row.contragent != 'Тұмарай ТОО':
         #     continue
 
         logger.info(row.contragent)
@@ -392,10 +392,10 @@ def performer(processing_date, processing_date_short, half_year_back_date):
             check_payments_subconto = check_payments_subconto_
             check_fill_final_step = check_fill_final_step_
 
-            app = Odines()
-            app.auth()
-
             if row.contragent not in ['ПРОКТЕР ЭНД ГЭМБЛ КАЗАХСТАН ДИСТРИБЬЮШН ТОО (13623)', 'КИМБЕРЛИ-КЛАРК КАЗАХСТАН ТОО (3199)']:
+
+                app = Odines()
+                app.auth()
 
                 update_in_db(session, row, 'processing', None, None,
                              None, None, None, None)
@@ -591,8 +591,17 @@ def performer(processing_date, processing_date_short, half_year_back_date):
                                 app.find_element({"title_re": ".* Контрагент", "class_name": "", "control_type": "Custom",
                                                   "visible_only": True, "enabled_only": True, "found_index": index}).click(double=True)
 
-                                invoice = str(app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                                                                "visible_only": True, "enabled_only": True, "found_index": 3}).element.iface_value.CurrentValue)
+                                # app.parent_switch({"title": "", "class_name": "", "control_type": "Pane",
+                                #                    "visible_only": True, "enabled_only": True, "found_index": 33})
+
+                                for el in app.find_elements({"title": "", "class_name": "", "control_type": "Edit", "visible_only": True, "enabled_only": True}):
+                                    # if 'организац' in str(el.element.element_info.element.CurrentHelpText).lower():
+                                    #     branch = el.element.iface_value.CurrentValue
+                                    if 'договор' in str(el.element.element_info.element.CurrentHelpText).lower():
+                                        invoice = el.element.iface_value.CurrentValue
+
+                                # invoice = str(app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                #                                 "visible_only": True, "enabled_only": True, "found_index": 3}).element.iface_value.CurrentValue)
 
                                 nomenclatura = str(app.find_element({"title_re": ".* Номенклатура", "class_name": "", "control_type": "Custom",
                                                                      "visible_only": True, "enabled_only": True, "found_index": 0}).element.element_info.name)
@@ -807,12 +816,21 @@ def performer(processing_date, processing_date_short, half_year_back_date):
                                 app.find_element({"title_re": ".* Контрагент", "class_name": "", "control_type": "Custom",
                                                   "visible_only": True, "enabled_only": True, "found_index": index}).click(double=True)
 
-                                try:
-                                    invoice = str(app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                                                                "visible_only": True, "enabled_only": True, "found_index": 3}).element.iface_value.CurrentValue)
-                                except:
-                                    invoice = str(app.find_element({"title": "КФ Договор аренды №УАН_00732-2023 от 01.11.2023г. Субконто 1(НУ)", "class_name": "", "control_type": "Custom",
-                                                                    "visible_only": True, "enabled_only": True, "found_index": 0}).element.element_info.rich_text).replace(' Субконто 1(НУ)', '')
+                                # try:
+                                #     invoice = str(app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                #                                 "visible_only": True, "enabled_only": True, "found_index": 3}).element.iface_value.CurrentValue)
+                                # except:
+                                #     invoice = str(app.find_element({"title": "КФ Договор аренды №УАН_00732-2023 от 01.11.2023г. Субконто 1(НУ)", "class_name": "", "control_type": "Custom",
+                                #                                     "visible_only": True, "enabled_only": True, "found_index": 0}).element.element_info.rich_text).replace(' Субконто 1(НУ)', '')
+
+                                for el in app.find_elements({"title": "", "class_name": "", "control_type": "Edit", "visible_only": True, "enabled_only": True}):
+                                    # if 'организац' in str(el.element.element_info.element.CurrentHelpText).lower():
+                                    #     branch = el.element.iface_value.CurrentValue
+                                    if 'договор' in str(el.element.element_info.element.CurrentHelpText).lower():
+                                        invoice = el.element.iface_value.CurrentValue
+
+                                # invoice = str(app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                #                                 "visible_only": True, "enabled_only": True, "found_index": 3}).element.iface_value.CurrentValue)
 
                                 nomenclatura = str(app.find_element({"title_re": ".* Номенклатура", "class_name": "", "control_type": "Custom",
                                                                      "visible_only": True, "enabled_only": True, "found_index": 0}).element.element_info.name)
@@ -921,39 +939,7 @@ def performer(processing_date, processing_date_short, half_year_back_date):
 
                         app.parent_back(1)
 
-                        logger.warning(f'Checkpoint4 | {datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")}')
-
-                        # app.find_element({"title": "Установить отбор и сортировку списка...", "class_name": "", "control_type": "Button",
-                        #                   "visible_only": True, "enabled_only": True, "found_index": 0}).click()
-
-                        logger.warning(f'Checkpoint5 | {datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")}')
-
-                        # app.parent_switch({"title": "Отбор и сортировка", "class_name": "V8NewLocalFrameBaseWnd", "control_type": "Window",
-                        #                    "visible_only": True, "enabled_only": True, "found_index": 0}, maximize=True)
-
-                        logger.warning(f'Checkpoint6 | {datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")}')
-
-                        # app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                        #                   "visible_only": True, "enabled_only": True, "found_index": 9}).click(double=True)
-
-                        # for tab in range(15):
-                        #     # with suppress(Exception):
-                        #     #     app.find_element({"title": "Контрагент", "class_name": "", "control_type": "CheckBox",
-                        #     #                               "visible_only": True, "enabled_only": True, "found_index": 0}, timeout=0.1).click()
-                        #     #     break
-                        #     pag.hotkey('TAB')
-
-                        logger.warning(f'Checkpoint7 | {datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")}')
-
                         app.filter({'Контрагент': ('Равно', row.contragent), 'Сумма документа': ('Равно', row.payment_sum)})
-                        # 1
-                        # app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                        #                   "visible_only": True, "enabled_only": True, "found_index": 19}).click()
-                        # app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                        #                   "visible_only": True, "enabled_only": True, "found_index": 19}).type_keys(row.contragent, protect_first=True)
-
-                        # app.find_element({"title": "OK", "class_name": "", "control_type": "Button",
-                        #                   "visible_only": True, "enabled_only": True, "found_index": 0}).click()
 
                         logger.warning(f'Checkpoint8 | {datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")}')
 
@@ -1033,8 +1019,14 @@ def performer(processing_date, processing_date_short, half_year_back_date):
                                 app.find_element({"title_re": ".* Контрагент", "class_name": "", "control_type": "Custom",
                                                   "visible_only": True, "enabled_only": True, "found_index": index}).click(double=True)
 
-                                invoice = str(app.find_element({"title": "", "class_name": "", "control_type": "Edit",
-                                                                "visible_only": True, "enabled_only": True, "found_index": 3}).element.iface_value.CurrentValue)
+                                for el in app.find_elements({"title": "", "class_name": "", "control_type": "Edit", "visible_only": True, "enabled_only": True}):
+                                    # if 'организац' in str(el.element.element_info.element.CurrentHelpText).lower():
+                                    #     branch = el.element.iface_value.CurrentValue
+                                    if 'договор' in str(el.element.element_info.element.CurrentHelpText).lower():
+                                        invoice = el.element.iface_value.CurrentValue
+
+                                # invoice = str(app.find_element({"title": "", "class_name": "", "control_type": "Edit",
+                                #                                 "visible_only": True, "enabled_only": True, "found_index": 3}).element.iface_value.CurrentValue)
 
                                 nomenclatura = str(app.find_element({"title_re": ".* Номенклатура", "class_name": "", "control_type": "Custom",
                                                                      "visible_only": True, "enabled_only": True, "found_index": 0}).element.element_info.name)
@@ -1568,7 +1560,7 @@ def performer(processing_date, processing_date_short, half_year_back_date):
 
                     print(f'DATA TO FILL: Branch: {branch} | Invoice: {invoice} |')
 
-                    if branch is None or invoice == 'Без договора' or invoice == '' or invoice is None:
+                    if branch is None or branch == '' or invoice == 'Без договора' or invoice == '' or invoice is None:
                         app.find_element({"title": "", "class_name": "", "control_type": "Edit",
                                           "visible_only": True, "enabled_only": True, "found_index": branch_index, "parent": app.root}).click()
                         app.find_element({"title": "", "class_name": "", "control_type": "Edit",
@@ -1824,8 +1816,14 @@ def performer(processing_date, processing_date_short, half_year_back_date):
 
                         if procter_file is None:
                             smtp_send('Добрый день!\nФайл для Проктер Энд Гэмбл не загружен. Робот будет ждать 15 минут', subject='Разноска Входящих Платежей', to=to_whom, url='172.16.10.5', username='rpa.robot@magnum.kz')
+
+                            update_in_db(session, row, 'processing', None, None,
+                                         None, None, None, None)
                             sleep(900)
                             continue
+
+                        app = Odines()
+                        app.auth()
 
                         df = pd.read_excel(procter_file)
 
@@ -2126,9 +2124,11 @@ def performer(processing_date, processing_date_short, half_year_back_date):
 
                         print(cur_date, search_date)
 
-                        if 2.7 <= (datetime.datetime.now() - row.payment_date).total_seconds() / 86400:
-                            app = Odines()
-                            app.auth()
+                        if 3.6 <= (datetime.datetime.now() - row.payment_date).total_seconds() / 86400:
+
+                            print('Kimberly')
+                            print((datetime.datetime.now() - row.payment_date).total_seconds() / 86400, row.payment_date)
+
                             kimberly_file = None
 
                             for file in os.listdir(kimberly_path):               # Проверка на всякий случай
@@ -2139,8 +2139,15 @@ def performer(processing_date, processing_date_short, half_year_back_date):
 
                             if kimberly_file is None:
                                 smtp_send('Добрый день!\nФайл для Кимберли Кларк не загружен. Робот будет ждать 15 минут', subject='Разноска Входящих Платежей', to=to_whom, url='172.16.10.5', username='rpa.robot@magnum.kz')
+
+                                update_in_db(session, row, 'processing', None, None,
+                                             None, None, None, None)
+
                                 sleep(900)
                                 continue
+
+                            app = Odines()
+                            app.auth()
 
                             df = pd.read_excel(kimberly_file)
 
@@ -2263,7 +2270,7 @@ def performer(processing_date, processing_date_short, half_year_back_date):
                                     for key_, val_ in invoice.items():
 
                                         if ind__ == 0:
-                                            print('Kekus')
+
                                             invoice_contragent = app.find_element({"title_re": ".* Договор контрагента", "class_name": "", "control_type": "Custom",
                                                                                    "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}, timeout=120)
                                             invoice_contragent.click(double=True)

@@ -185,9 +185,10 @@ from tools.app import App
 
 app = App('')
 
-a = app.find_element({"title": "Записать", "class_name": "", "control_type": "Button",
-                      "visible_only": True, "enabled_only": True, "found_index": 0})
-print(app.parent.element.children())
+a = app.find_element({"title": "", "class_name": "", "control_type": "Edit", "visible_only": True, "enabled_only": True, "found_index": 3})
+b = app.find_element({"title": "", "class_name": "", "control_type": "Edit", "visible_only": True, "enabled_only": True, "found_index": 3})
+print(a)
+print(b)
 print()
 
 
