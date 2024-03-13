@@ -1199,7 +1199,7 @@ def performer(processing_date, processing_date_short, half_year_back_date):
                         logger.warning(f'Checkpoint10 | {datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")}')
 
                         app.find_element({"title": "Сформировать", "class_name": "", "control_type": "Button",
-                                          "visible_only": True, "enabled_only": True, "found_index": 0}).click()
+                                          "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
 
                         logger.warning(f'Checkpoint11 | {datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")}')
 
@@ -1521,7 +1521,7 @@ def performer(processing_date, processing_date_short, half_year_back_date):
                     row.origin_invoice_id = origin_invoice
                     session.commit()
 
-                    if skip:
+                    if skip or any([]):
 
                         print('CHECKPOINT FINAL 7')
 
@@ -1561,6 +1561,7 @@ def performer(processing_date, processing_date_short, half_year_back_date):
                     print(f'DATA TO FILL: Branch: {branch} | Invoice: {invoice} |')
 
                     if branch is None or branch == '' or invoice == 'Без договора' or invoice == '' or invoice is None:
+
                         app.find_element({"title": "", "class_name": "", "control_type": "Edit",
                                           "visible_only": True, "enabled_only": True, "found_index": branch_index, "parent": app.root}).click()
                         app.find_element({"title": "", "class_name": "", "control_type": "Edit",
@@ -2036,6 +2037,12 @@ def performer(processing_date, processing_date_short, half_year_back_date):
                                 app.find_element({"title": "ОК", "class_name": "", "control_type": "Button",
                                                   "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
 
+                                with suppress(Exception):
+                                    Path.unlink(Path(procter_file))
+
+                                update_in_db(session, row, 'success', row.branch, None,
+                                             None, None, None, None)
+
                             else:
 
                                 app.find_element({"title": "", "class_name": "", "control_type": "Edit",
@@ -2111,6 +2118,10 @@ def performer(processing_date, processing_date_short, half_year_back_date):
                                 print()
                                 app.find_element({"title": "ОК", "class_name": "", "control_type": "Button",
                                                   "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
+
+                                with suppress(Exception):
+                                    Path.unlink(Path(procter_file))
+
                                 update_in_db(session, row, 'success', row.branch, None,
                                              None, None, None, None)
                                 print()
@@ -2336,6 +2347,12 @@ def performer(processing_date, processing_date_short, half_year_back_date):
                                 app.find_element({"title": "ОК", "class_name": "", "control_type": "Button",
                                                   "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
 
+                                with suppress(Exception):
+                                    Path.unlink(Path(kimberly_file))
+
+                                update_in_db(session, row, 'success', row.branch, None,
+                                             None, None, None, None)
+
                             break
 
                         # update_in_db(session, row, 'kekus', None, None,
@@ -2408,6 +2425,10 @@ def main():
             performer(processing_date_, processing_date_short_, half_year_back_date)
 
         send_telegram_message(tg_token, '-4124647303', f'Finished {ip_address}')
+        #1
+        if ip_address == main_executor:
+            smtp_send('Добрый день!\nРазноска Входящих Платежей завершилась', subject='Разноска Входящих Платежей', to=to_whom, url='172.16.10.5', username='rpa.robot@magnum.kz')
+
 
     except Exception as error:
         logger.info(f'Error occured: {error}')

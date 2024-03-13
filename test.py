@@ -183,14 +183,14 @@ from tools.app import App
 #             # df__ = df_notna[df_notna['Окончание смены_1'] == dates].copy().drop(columns=['Окончание смены_1'])
 #             df_notna[df_notna['Окончание смены_1'] == dates].to_excel(fr'C:\Users\Abdykarim.D\Documents\BI\A\outsourcingshifts {str(dates.split()[0]).replace(".", "_")}.xlsx', index=False)
 
-app = App('')
 
-a = app.find_element({"title": "", "class_name": "", "control_type": "Edit", "visible_only": True, "enabled_only": True, "found_index": 3})
-b = app.find_element({"title": "", "class_name": "", "control_type": "Edit", "visible_only": True, "enabled_only": True, "found_index": 3})
-print(a)
-print(b)
-print()
+a = 4
+b = 3
+c = 2
+d = 1
 
+if any(i is None for i in [a, b, c, d]):
+    print('kek')
 
 
 # import pandas as pd

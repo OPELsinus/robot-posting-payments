@@ -80,7 +80,7 @@ nds = config_data['nds']
 
 download_path = Path.home().joinpath('downloads')
 ip_address = socket.gethostbyname(socket.gethostname())
-main_executor = '172.20.1.24'  # '10.70.2.11'
+main_executor = config_data['main_executor']
 
 # ? EXAMPLES
 # * root_path == C:\Users\user\PycharmProjects\pythonProject
