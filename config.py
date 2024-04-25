@@ -75,7 +75,9 @@ production_calendar_path = config_data['production_calendar_path']
 form_document_path = config_data['form_document_path']
 procter_path = config_data['procter_path']
 kimberly_path = config_data['kimberly_path']
+to_whom_if_no_files = config_data['to_whom_if_no_files']
 to_whom = config_data['to_whom']
+process_date = config_data['process_date']
 nds = config_data['nds']
 
 download_path = Path.home().joinpath('downloads')

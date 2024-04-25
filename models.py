@@ -16,7 +16,7 @@ Base = declarative_base()
 
 
 class Table_(Base):
-    __tablename__ = f'robot_posting_payments_10.70.2.51'  # f'robot_posting_payments_{ip_address}'  # project_name.replace('-', '_')
+    __tablename__ = f'robot_posting_payments'  # f'robot_posting_payments_{ip_address}'  # project_name.replace('-', '_')
 
     date_created = Column(DateTime, default=None)
     date_started = Column(DateTime, default=None)

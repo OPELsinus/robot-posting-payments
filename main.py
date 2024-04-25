@@ -13,7 +13,7 @@ from pywinauto import keyboard
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from config import logger, process_list_path, production_calendar_path, form_document_path, engine_kwargs, to_whom, procter_path, kimberly_path, nds, main_executor, ip_address, download_path, tg_token
+from config import logger, process_date, process_list_path, production_calendar_path, form_document_path, engine_kwargs, to_whom, procter_path, kimberly_path, nds, main_executor, ip_address, download_path, tg_token, to_whom_if_no_files
 from models import Base, add_to_db, get_all_data, get_all_data_by_status, update_in_db
 from tools.smtp import smtp_send
 from tools.app import App
@@ -119,8 +119,8 @@ def performer(processing_date, processing_date_short, half_year_back_date):
     check_payments_subconto_ = True
     check_fill_final_step_ = True
 
-    first_excel_path = os.path.join(download_path, f'lolus_{ip_address.replace(".", "_")}.xlsx')
-    second_excel_path = os.path.join(download_path, f'chpokus_{ip_address.replace(".", "_")}.xlsx')
+    first_excel_path = os.path.join(download_path, f'temp111_{ip_address.replace(".", "_")}.xlsx')
+    second_excel_path = os.path.join(download_path, f'temp222_{ip_address.replace(".", "_")}.xlsx')
     subconto_path = os.path.join(download_path, f'subconto_{ip_address.replace(".", "_")}.xlsx')
 
     # procter_path = r'\\vault.magnum.local\common\Stuff\_06_Бухгалтерия\Выписки\Для Робота\Для Проктер\PaymentReportDetails (13).xlsx'
@@ -373,8 +373,13 @@ def performer(processing_date, processing_date_short, half_year_back_date):
         print(f'Total rows: {len(rows)}')
         sleep(1)
 
-        row = rows[0]
+        try:
+            row = rows[0]
+        except:
+            break
         ind += 1
+
+        prev_status = row.status
 
         # if row.contragent != 'Тұмарай ТОО':
         #     continue
@@ -1317,14 +1322,31 @@ def performer(processing_date, processing_date_short, half_year_back_date):
                         #                           "visible_only": True, "enabled_only": True, "found_index": 2, "parent": None}, timeout=60).click()
                         # app.open("Окна", "Закрыть все")
 
-                        app.quit()
+                        # app.quit()
+
+                        app.find_element({"title": "", "class_name": "", "control_type": "DataGrid",
+                                          "visible_only": True, "enabled_only": True, "found_index": 0}, timeout=10).click()
+                        app.find_element({"title": "", "class_name": "", "control_type": "DataGrid",
+                                          "visible_only": True, "enabled_only": True, "found_index": 0}, timeout=10).type_keys(app.keys.ESCAPE * 10)
 
                         app = Odines()
                         app.auth()
 
                     except Exception as err4:
+
                         traceback.print_exc()
-                        app.open("Окна", "Закрыть все")
+
+                        logger.warning(f'QUIT | {datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")}')
+                        app.find_element({"title": "", "class_name": "", "control_type": "DataGrid",
+                                          "visible_only": True, "enabled_only": True, "found_index": 0}, timeout=10).click()
+                        app.find_element({"title": "", "class_name": "", "control_type": "DataGrid",
+                                          "visible_only": True, "enabled_only": True, "found_index": 0}, timeout=10).type_keys(app.keys.ESCAPE * 10)
+
+                        logger.warning(f'QUITTING | {datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")}')
+
+                        app = Odines()
+                        app.auth()
+
                         logger.warning(f'Error4 occured: {err4}')
                         update_in_db(session, row, 'processing', None, None,
                                      None, None, None, False, error_reason_=str(traceback.format_exc())[:500])
@@ -1605,6 +1627,26 @@ def performer(processing_date, processing_date_short, half_year_back_date):
                     app.find_element({"title": "", "class_name": "", "control_type": "Edit",
                                       "visible_only": True, "enabled_only": True, "found_index": invoice_index, "parent": app.root}).type_keys(app.keys.TAB)
 
+                    if app.wait_element({"title": "1С:Предприятие", "class_name": "V8NewLocalFrameBaseWnd", "control_type": "Window",
+                                         "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}, timeout=1):
+                        app.parent_switch({"title": "1С:Предприятие", "class_name": "V8NewLocalFrameBaseWnd", "control_type": "Window",
+                                           "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root})
+                        app.find_element({"title": "Да", "class_name": "", "control_type": "Button",
+                                          "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
+
+                        app.find_element({"title": "Закрыть", "class_name": "", "control_type": "Button",
+                                          "visible_only": True, "enabled_only": True, "found_index": 3, "parent": app.root}).click()
+
+                        # app.find_element({"title": "Нет", "class_name": "", "control_type": "Button",
+                        #                   "visible_only": True, "enabled_only": True, "found_index": 0, "parent": app.root}).click()
+
+                        update_in_db(session, row, 'failed - no invoice', None, None,
+                                     None, None, None, False)
+
+                        app.quit()
+
+                        continue
+
                     sleep(1)
 
                     # DDS ----------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1731,6 +1773,10 @@ def performer(processing_date, processing_date_short, half_year_back_date):
                         update_in_db(session, row, 'failed last', None, None,
                                      None, None, None, False)
 
+                        app.quit()
+
+                        continue
+
                     print()
                     saved = False
                     for _ in range(15):
@@ -1781,7 +1827,7 @@ def performer(processing_date, processing_date_short, half_year_back_date):
 
             else:
 
-                for tries in range(2):
+                for tries in range(3):
 
                     if row.contragent == 'ПРОКТЕР ЭНД ГЭМБЛ КАЗАХСТАН ДИСТРИБЬЮШН ТОО (13623)':
 
@@ -1811,12 +1857,22 @@ def performer(processing_date, processing_date_short, half_year_back_date):
                         procter_file = None
 
                         for file in os.listdir(procter_path):
-                            if '.xl' in str(file):
+                            if '.xl' in str(file).lower():
                                 procter_file = os.path.join(procter_path, file)
                                 break
 
                         if procter_file is None:
-                            smtp_send('Добрый день!\nФайл для Проктер Энд Гэмбл не загружен. Робот будет ждать 15 минут', subject='Разноска Входящих Платежей', to=to_whom, url='172.16.10.5', username='rpa.robot@magnum.kz')
+
+                            if tries == 2:
+
+                                if prev_status == 'failed - no file':
+                                    update_in_db(session, row, 'failed total - no file', None, None,
+                                                 None, None, None, None)
+                                else:
+                                    update_in_db(session, row, 'failed - no file', None, None,
+                                                 None, None, None, None)
+                                continue
+                            smtp_send('Добрый день!\nФайл для Проктер Энд Гэмбл не загружен. Робот будет ждать 15 минут', subject='Разноска Входящих Платежей', to=to_whom_if_no_files, url='172.16.10.5', username='rpa.robot@magnum.kz')
 
                             update_in_db(session, row, 'processing', None, None,
                                          None, None, None, None)
@@ -2135,7 +2191,7 @@ def performer(processing_date, processing_date_short, half_year_back_date):
 
                         print(cur_date, search_date)
 
-                        if 3.6 <= (datetime.datetime.now() - row.payment_date).total_seconds() / 86400:
+                        if 4 <= (datetime.datetime.now() - row.payment_date).total_seconds() / 86400:
 
                             print('Kimberly')
                             print((datetime.datetime.now() - row.payment_date).total_seconds() / 86400, row.payment_date)
@@ -2143,13 +2199,24 @@ def performer(processing_date, processing_date_short, half_year_back_date):
                             kimberly_file = None
 
                             for file in os.listdir(kimberly_path):               # Проверка на всякий случай
-                                if row.payment_date.strftime('%d.%m.%Y') in file or '.xl' in file:
+                                if '.xl' in str(file).lower():
                                     kimberly_file = os.path.join(kimberly_path, file)
 
                             print('FOUND EXCEL', kimberly_file)
 
                             if kimberly_file is None:
-                                smtp_send('Добрый день!\nФайл для Кимберли Кларк не загружен. Робот будет ждать 15 минут', subject='Разноска Входящих Платежей', to=to_whom, url='172.16.10.5', username='rpa.robot@magnum.kz')
+
+                                if tries == 2:
+
+                                    if prev_status == 'failed - no file':
+                                        update_in_db(session, row, 'failed total - no file', None, None,
+                                                     None, None, None, None)
+                                    else:
+                                        update_in_db(session, row, 'failed - no file', None, None,
+                                                     None, None, None, None)
+                                    continue
+
+                                smtp_send('Добрый день!\nФайл для Кимберли Кларк не загружен. Робот будет ждать 15 минут', subject='Разноска Входящих Платежей', to=to_whom_if_no_files, url='172.16.10.5', username='rpa.robot@magnum.kz')
 
                                 update_in_db(session, row, 'processing', None, None,
                                              None, None, None, None)
@@ -2391,44 +2458,32 @@ def main():
         logger.info('Process started')
         logger.warning('Process started')
 
-        day1_ = 22
-        day2_ = 23
-
-        # if ip_address == '10.70.2.50':
-        #     day1_ = 13
-        #     day2_ = 14
-        # if ip_address == '10.70.2.51':
-        #     day1_ = 14
-        #     day2_ = 15
-        # if ip_address == '10.70.2.52':
-        #     day1_ = 15
-        #     day2_ = 16
-
         send_telegram_message(tg_token, '-4124647303', f'Started {ip_address}')
 
-        for day in range(day1_, day2_):
+        processing_date_ = datetime.date.today().strftime('%d.%m.%Y')
+        processing_date_short_ = datetime.date.today().strftime('%d.%m.%y')
 
-            processing_date_ = datetime.date.today().strftime('%d.%m.%Y')
-            processing_date_short_ = datetime.date.today().strftime('%d.%m.%y')
+        if process_date != '':
+            processing_date_ = process_date
+            processing_date_short_ = f"{process_date.split('.')[0]}.{process_date.split('.')[1]}.{process_date.split('.')[2][2:]}"
 
-            # if day < 10:
-            #     processing_date_ = f'0{day}.02.2024'
-            #     processing_date_short_ = f'0{day}.02.24'
-            # else:
-            #     processing_date_ = f'{day}.02.2024'
-            #     processing_date_short_ = f'{day}.02.24'
+        # if day < 10:
+        #     processing_date_ = f'0{day}.02.2024'
+        #     processing_date_short_ = f'0{day}.02.24'
+        # else:
+        #     processing_date_ = f'{day}.02.2024'
+        #     processing_date_short_ = f'{day}.02.24'
 
-            logger.warning(f'Process date: {processing_date_}')
+        logger.warning(f'Process date: {processing_date_}')
 
-            half_year_back_date = (datetime.date(int(processing_date_.split('.')[2]), int(processing_date_.split('.')[1]), int(processing_date_.split('.')[0])) - datetime.timedelta(days=180)).strftime('%d.%m.%Y')
+        half_year_back_date = (datetime.date(int(processing_date_.split('.')[2]), int(processing_date_.split('.')[1]), int(processing_date_.split('.')[0])) - datetime.timedelta(days=180)).strftime('%d.%m.%Y')
 
-            performer(processing_date_, processing_date_short_, half_year_back_date)
+        performer(processing_date_, processing_date_short_, half_year_back_date)
 
         send_telegram_message(tg_token, '-4124647303', f'Finished {ip_address}')
-        #1
+
         if ip_address == main_executor:
             smtp_send('Добрый день!\nРазноска Входящих Платежей завершилась', subject='Разноска Входящих Платежей', to=to_whom, url='172.16.10.5', username='rpa.robot@magnum.kz')
-
 
     except Exception as error:
         logger.info(f'Error occured: {error}')
